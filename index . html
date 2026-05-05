@@ -1,224 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EyeTech Pro</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>EyeTech</title>
 </head>
 
-<body style="
-  background: linear-gradient(135deg,#0f172a,#1e293b);
-  color:white;
-  font-family: system-ui;
-  text-align:center;
-  padding:20px;
-">
+<body style="background:#0f172a;color:white;text-align:center;font-family:sans-serif;">
 
-<h1>⚡ EyeTech Pro</h1>
-
+<h1>⚡ EyeTech</h1>
 <div id="app"></div>
 
 <script>
 
-// 🔐 USER ID
 let userId = localStorage.getItem("user_id");
 
 if (!userId) {
-  userId = "user_" + Math.random().toString(36).substr(2, 9);
+  userId = "user_" + Math.random().toString(36).substr(2,9);
   localStorage.setItem("user_id", userId);
 }
 
 const surveyDone = localStorage.getItem("survey_done");
 const app = document.getElementById("app");
 
-
-// 🧾 SURVEY PAGE
-function showSurvey() {
+// 🧾 SURVEY
+function showSurvey(){
   app.innerHTML = `
-    <div style="max-width:400px;margin:auto;background:#111827;padding:20px;border-radius:16px;">
-      <h2>🏠 Setup Your Home</h2>
-
-      <input id="price" placeholder="Price per kWh (e.g. 0.31)" /><br><br>
-      <input id="lights" placeholder="Number of lights" /><br><br>
-      <input id="tv" placeholder="TV hours per day" /><br><br>
-      <input id="wash" placeholder="Washing per week" /><br><br>
-
-      <button onclick="submitSurvey()">Start</button>
-    </div>
+    <h2>Setup</h2>
+    <input id="price" placeholder="Price per kWh"><br><br>
+    <input id="lights" placeholder="Lights count"><br><br>
+    <button onclick="submitSurvey()">Start</button>
   `;
 }
 
-
-// 📤 SUBMIT SURVEY
-async function submitSurvey() {
-
-  const data = {
-    user_id: userId,
-    price_per_kwh: parseFloat(price.value),
-    lights_count: parseInt(lights.value),
-    tv_hours: parseFloat(tv.value),
-    washing_per_week: parseInt(wash.value),
-    devices: ["fridge","tv","lights"]
-  };
-
+async function submitSurvey(){
   await fetch("https://eye-tech-server.onrender.com/survey", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify(data)
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      user_id:userId,
+      price_per_kwh:parseFloat(price.value),
+      lights_count:parseInt(lights.value),
+      devices:["fridge","tv","lights"]
+    })
   });
 
-  localStorage.setItem("survey_done", true);
+  localStorage.setItem("survey_done",true);
   location.reload();
 }
 
-
 // 📊 DASHBOARD
-function showDashboard() {
-
+function showDashboard(){
   app.innerHTML = `
-    <div style="max-width:700px;margin:auto;background:#111827;padding:20px;border-radius:16px;">
+    <h2>Dashboard</h2>
 
-      <h2>📊 Dashboard</h2>
+    <h3 id="daily"></h3>
+    <h3 id="monthly"></h3>
+    <h3 id="cost"></h3>
 
-      <h3 id="power">Power: --</h3>
-      <h3 id="daily">Daily Usage: -- kWh</h3>
-      <h3 id="monthly">Monthly Usage: -- kWh</h3>
-      <h3 id="cost">Monthly Cost: --</h3>
+    <h3>Devices</h3>
+    <label><input type="checkbox" onchange="toggle('lights',this)"> Lights</label><br>
+    <label><input type="checkbox" onchange="toggle('tv',this)"> TV</label><br>
+    <label><input type="checkbox" onchange="toggle('washing_machine',this)"> Washing</label><br>
 
-      <hr>
-
-      <h3>🔌 Device Control</h3>
-
-      <label><input type="checkbox" onchange="toggle('lights', this)"> Lights</label><br>
-      <label><input type="checkbox" onchange="toggle('tv', this)"> TV</label><br>
-      <label><input type="checkbox" onchange="toggle('washing_machine', this)"> Washing Machine</label><br>
-
-      <div id="devices"></div>
-
-      <hr>
-
-      <div id="insights"></div>
-
-      <hr>
-
-      <h3>📥 Improve Accuracy</h3>
-      <input id="real_kwh" placeholder="Enter real monthly kWh">
-      <button onclick="sendFeedback()">Submit</button>
-
-      <canvas id="chart"></canvas>
-
-    </div>
+    <div id="insights"></div>
   `;
 
-  start();
+  setInterval(fetchData,5000);
 }
 
+// 🔌 TOGGLE
+async function toggle(device, el){
 
-// 🔌 TOGGLE DEVICES
-async function toggle(device, el) {
-
-  let flags = JSON.parse(localStorage.getItem("usage_flags") || "{}");
-
+  let flags = JSON.parse(localStorage.getItem("usage_flags")||"{}");
   flags[device] = el.checked;
 
   localStorage.setItem("usage_flags", JSON.stringify(flags));
 
-  await fetch("https://eye-tech-server.onrender.com/usage", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      user_id: userId,
-      usage_flags: flags
+  await fetch("https://eye-tech-server.onrender.com/usage",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      user_id:userId,
+      usage_flags:flags
+    })
+  });
+
+  await fetch("https://eye-tech-server.onrender.com/track",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      user_id:userId,
+      device:device,
+      action: el.checked ? "on":"off"
     })
   });
 }
 
-
-// 🔁 FETCH DATA
-async function fetchData() {
+// 🔄 FETCH DATA
+async function fetchData(){
 
   const res = await fetch(`https://eye-tech-server.onrender.com/latest/${userId}`);
   const data = await res.json();
 
-  if (data.error) return;
-
-  power.innerText = "Power: " + data.power + " W";
-  daily.innerText = "Daily Usage: " + data.estimated_daily_kwh + " kWh";
-  monthly.innerText = "Monthly Usage: " + data.estimated_monthly_kwh + " kWh";
+  daily.innerText = "Daily kWh: " + data.daily_kwh;
+  monthly.innerText = "Monthly kWh: " + data.monthly_kwh;
   cost.innerText = "Monthly Cost: $" + data.monthly_cost;
 
-  // 🔌 Device breakdown
-  devices.innerHTML = "<h3>Device Breakdown</h3>";
-  for (let d in data.breakdown) {
-    devices.innerHTML += `<p>${d}: ${data.breakdown[d]} W</p>`;
-  }
-
-  // 🧠 Insights
-  insights.innerHTML = "<h3>🧠 AI Insights</h3>";
-  data.insights.forEach(i => {
-    insights.innerHTML += `<p>${i}</p>`;
-  });
-
-  // 📈 Graph
-  chart.data.labels.push(new Date().toLocaleTimeString());
-  chart.data.datasets[0].data.push(data.power);
-
-  if (chart.data.labels.length > 20) {
-    chart.data.labels.shift();
-    chart.data.datasets[0].data.shift();
-  }
-
-  chart.update();
+  insights.innerHTML = "<h3>Insights</h3>";
+  data.insights.forEach(i => insights.innerHTML += "<p>"+i+"</p>");
 }
-
-
-// 📈 GRAPH
-let chart;
-
-function start() {
-  const ctx = document.getElementById("chart");
-
-  chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: [],
-      datasets: [{
-        label: "Power (W)",
-        data: [],
-        borderColor: "cyan"
-      }]
-    }
-  });
-
-  fetchData();
-  setInterval(fetchData, 5000);
-}
-
-
-// 🔁 FEEDBACK SYSTEM
-async function sendFeedback() {
-
-  const val = real_kwh.value;
-
-  if (!val) {
-    alert("Enter value first");
-    return;
-  }
-
-  await fetch("https://eye-tech-server.onrender.com/feedback", {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({
-      user_id: userId,
-      real_kwh: parseFloat(val)
-    })
-  });
-
-  alert("✅ System improved!");
-}
-
 
 // 🚀 INIT
-if (!surveyDone) showSurvey();
+if(!surveyDone) showSurvey();
 else showDashboard();
 
 </script>
