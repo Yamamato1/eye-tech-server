@@ -14,7 +14,7 @@ DEVICE_POWER = {
     "fridge": 150
 }
 
-# 🧾 SURVEY
+# ---------------- SURVEY ----------------
 @app.route('/survey', methods=['POST'])
 def save_survey():
     data = request.json
@@ -31,20 +31,17 @@ def save_survey():
     return jsonify({"status": "saved"})
 
 
-# 🔌 DEVICE STATE
+# ---------------- USAGE ----------------
 @app.route('/usage', methods=['POST'])
 def update_usage():
     data = request.json
     user_id = data.get("user_id")
 
-    if user_id not in user_data:
-        return jsonify({"error": "User not found"}), 404
-
     user_data[user_id]["usage_flags"] = data.get("usage_flags", {})
     return jsonify({"status": "updated"})
 
 
-# ⏱️ TRACK USAGE
+# ---------------- TRACK ----------------
 @app.route('/track', methods=['POST'])
 def track_usage():
     data = request.json
@@ -52,161 +49,177 @@ def track_usage():
     device = data.get("device")
     action = data.get("action")
 
-    if user_id not in user_data:
-        return jsonify({"error": "User not found"}), 404
-
-    now = datetime.now()
     user = user_data[user_id]
+    now = datetime.now()
 
     if action == "on":
         user["active_devices"][device] = now
 
     elif action == "off":
-        start_time = user["active_devices"].get(device)
+        start = user["active_devices"].get(device)
 
-        if start_time:
-            duration = (now - start_time).total_seconds() / 3600
+        if start:
+            duration = (now - start).total_seconds() / 3600
 
-            record = {
+            user["history"].append({
                 "device": device,
                 "duration_hours": round(duration, 2),
-                "start_time": start_time.strftime("%Y-%m-%d %H:%M:%S"),
+                "start_time": start.strftime("%Y-%m-%d %H:%M:%S"),
                 "end_time": now.strftime("%Y-%m-%d %H:%M:%S"),
-                "date": start_time.strftime("%Y-%m-%d"),
-                "day": start_time.strftime("%A")
-            }
+                "date": start.strftime("%Y-%m-%d"),
+                "day": start.strftime("%A")
+            })
 
-            user["history"].append(record)
             del user["active_devices"][device]
 
     return jsonify({"status": "tracked"})
 
 
-# ⚡ ENERGY CALCULATION
+# ---------------- ENERGY ----------------
 def calculate_energy(user):
     survey = user["survey"]
-    history = user["history"]
+    total = 0
 
-    total_kwh = 0
+    for r in user["history"]:
+        d = r["device"]
+        dur = r["duration_hours"]
 
-    for record in history:
-        device = record["device"]
-        duration = record["duration_hours"]
-
-        if device == "lights":
-            count = survey.get("lights_count", 5)
-            power = count * DEVICE_POWER["lights"]
+        if d == "lights":
+            power = survey.get("lights_count", 5) * 10
         else:
-            power = DEVICE_POWER.get(device, 0)
+            power = DEVICE_POWER.get(d, 0)
 
-        energy = (power * duration) / 1000
-        total_kwh += energy
+        total += (power * dur) / 1000
 
-    return total_kwh
+    return total
 
 
-# 🧠 HABIT ANALYSIS
+# ---------------- HABITS ----------------
 def analyze_habits(history):
-
     habits = {}
 
-    for record in history:
-        device = record["device"]
-        day = record["day"]
-        hour = int(record["start_time"].split(" ")[1].split(":")[0])
+    for r in history:
+        d = r["device"]
+        day = r["day"]
+        hour = int(r["start_time"].split(" ")[1].split(":")[0])
 
-        if device not in habits:
-            habits[device] = {
-                "days": {},
-                "hours": {}
-            }
+        habits.setdefault(d, {"days": {}, "hours": {}})
 
-        habits[device]["days"][day] = habits[device]["days"].get(day, 0) + 1
-        habits[device]["hours"][hour] = habits[device]["hours"].get(hour, 0) + 1
+        habits[d]["days"][day] = habits[d]["days"].get(day, 0) + 1
+        habits[d]["hours"][hour] = habits[d]["hours"].get(hour, 0) + 1
 
     return habits
 
 
-# 🧠 SMART INSIGHTS (UPDATED)
+# ---------------- PEAK ----------------
+def calculate_peak_hour(user):
+    hourly = {}
+
+    for r in user["history"]:
+        hour = int(r["start_time"].split(" ")[1].split(":")[0])
+        dur = r["duration_hours"]
+        power = DEVICE_POWER.get(r["device"], 0)
+
+        hourly[hour] = hourly.get(hour, 0) + (power * dur) / 1000
+
+    if not hourly:
+        return None
+
+    return max(hourly, key=hourly.get)
+
+
+# ---------------- WEEKLY ----------------
+def weekly_report(user):
+    daily = {}
+
+    for r in user["history"]:
+        date = r["date"]
+        power = DEVICE_POWER.get(r["device"], 0)
+        energy = (power * r["duration_hours"]) / 1000
+
+        daily[date] = daily.get(date, 0) + energy
+
+    return daily
+
+
+# ---------------- COMPARE ----------------
+def compare_users():
+    vals = [calculate_energy(u) for u in user_data.values()]
+    return sum(vals)/len(vals) if vals else 0
+
+
+# ---------------- INSIGHTS ----------------
 def generate_insights(user):
+
+    kwh = calculate_energy(user)
+    habits = analyze_habits(user["history"])
 
     insights = []
 
-    kwh = calculate_energy(user)
-    history = user.get("history", [])
-    habits = analyze_habits(history)
-
-    # Basic
     if kwh > 10:
-        insights.append("⚠️ High energy usage")
+        insights.append("⚠️ High usage")
+    elif kwh < 3:
+        insights.append("💡 Efficient usage")
 
-    if kwh < 3:
-        insights.append("💡 Very efficient usage")
-
-    # 🔥 HABITS
-    for device, data in habits.items():
-
+    for d, data in habits.items():
         if data["days"]:
-            common_day = max(data["days"], key=data["days"].get)
-
-            if data["days"][common_day] >= 2:
-                insights.append(f"📅 You often use {device} on {common_day}")
+            day = max(data["days"], key=data["days"].get)
+            insights.append(f"📅 {d} often used on {day}")
 
         if data["hours"]:
-            peak_hour = max(data["hours"], key=data["hours"].get)
-            insights.append(f"⏰ {device} mostly used around {peak_hour}:00")
+            hr = max(data["hours"], key=data["hours"].get)
+            insights.append(f"⏰ {d} used around {hr}:00")
 
     insights.append(f"📊 Monthly estimate: {round(kwh*30,1)} kWh")
 
     return insights
 
 
-# 📊 DASHBOARD
-@app.route('/latest/<user_id>', methods=['GET'])
-def get_latest(user_id):
-
-    if user_id not in user_data:
-        return jsonify({"error": "User not found"}), 404
+# ---------------- MAIN ----------------
+@app.route('/latest/<user_id>')
+def latest(user_id):
 
     user = user_data[user_id]
-    survey = user["survey"]
+    kwh = calculate_energy(user) * user["factor"]
+    price = user["survey"].get("price_per_kwh", 0.1)
 
-    kwh = calculate_energy(user) * user.get("factor", 1)
-    price = survey.get("price_per_kwh", 0.1)
+    avg = compare_users()
+    comp = "average"
+
+    if kwh > avg:
+        comp = "above average ⚠️"
+    elif kwh < avg:
+        comp = "below average 💡"
 
     return jsonify({
-        "daily_kwh": round(kwh, 2),
-        "monthly_kwh": round(kwh * 30, 2),
-        "monthly_cost": round(kwh * 30 * price, 2),
+        "daily_kwh": round(kwh,2),
+        "monthly_kwh": round(kwh*30,2),
+        "monthly_cost": round(kwh*30*price,2),
+        "peak_hour": calculate_peak_hour(user),
+        "weekly": weekly_report(user),
+        "comparison": comp,
         "insights": generate_insights(user)
     })
 
 
-# 📜 HISTORY
-@app.route('/history/<user_id>', methods=['GET'])
+# ---------------- HISTORY ----------------
+@app.route('/history/<user_id>')
 def history(user_id):
-    return jsonify(user_data[user_id].get("history", []))
+    return jsonify(user_data[user_id]["history"])
 
 
-# 🔁 FEEDBACK
+# ---------------- FEEDBACK ----------------
 @app.route('/feedback', methods=['POST'])
 def feedback():
     data = request.json
-    user_id = data.get("user_id")
-    real_kwh = data.get("real_kwh")
+    user = user_data[data["user_id"]]
 
-    user = user_data[user_id]
-    predicted = calculate_energy(user)
+    pred = calculate_energy(user)
+    real = data["real_kwh"]
 
-    factor = real_kwh / predicted if predicted > 0 else 1
-    user["factor"] = factor
+    user["factor"] = real/pred if pred else 1
 
-    return jsonify({"factor": round(factor, 2)})
-
-
-@app.route('/')
-def home():
-    return "EyeTech Running 🚀"
+    return jsonify({"status":"updated"})
 
 
 if __name__ == "__main__":
