@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>EyeTech Smart Energy</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body style="background:#0f172a;color:white;font-family:sans-serif;text-align:center">
+
+<h1>⚡ EyeTech Smart Energy</h1>
+
+<div id="app"></div>
+
+<script>
+// 🔐 USER ID
+let userId = localStorage.getItem("user_id");
+
+if (!userId) {
+  userId = "user_" + Math.random().toString(36).substr(2, 9);
+  localStorage.setItem("user_id", userId);
+}
+
+const surveyDone = localStorage.getItem("survey_done");
+
+const app = document.getElementById("app");
+
+// 🧾 SURVEY UI
+function showSurvey() {
+  app.innerHTML = `
+    <h2>🏠 Setup Your Home</h2>
+
+    <label><input type="checkbox" value="fridge"> Fridge</label><br>
+    <label><input type="checkbox" value="tv"> TV</label><br>
+    <label><input type="checkbox" value="lights"> Lights</label><br>
+    <label><input type="checkbox" value="oven"> Oven</label><br>
+    <label><input type="checkbox" value="ac"> Air Conditioner</label><br>
+
+    <br><br>
+    <button onclick="submitSurvey()">Analyze Energy</button>
+  `;
+}
+
+// 📤 SEND SURVEY
+async function submitSurvey() {
+  const selected = Array.from(document.querySelectorAll("input:checked"))
+    .map(el => el.value);
+
+  try {
+    const res = await fetch("https://eye-tech-server.onrender.com/survey", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user_id: userId,
+        devices: selected
+      })
+    });
+
+    const data = await res.json();
+
+    if (res.ok) {
+      localStorage.setItem("survey_done", "true");
+      location.reload();
+    } else {
+      alert(data.error);
+    }
+
+  } catch (err) {
+    alert("Connection error ❌");
+  }
+}
+
+// 📊 DASHBOARD
+function showDashboard() {
+  app.innerHTML = `
+    <h2>📊 Your Energy Dashboard</h2>
+
+    <h3 id="voltage">Voltage: --</h3>
+    <h3 id="current">Current: --</h3>
+    <h3 id="power">Power: --</h3>
+
+    <div id="insights"></div>
+
+    <canvas id="chart" width="400" height="200"></canvas>
+  `;
+
+  startData();
+}
+
+// 📈 GRAPH
+let chart;
+let powerData = [];
+let labels = [];
+
+function initChart() {
+  const ctx = document.getElementById("chart").getContext("2d");
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: "Power (W)",
+        data: powerData,
+        borderColor: "cyan"
+      }]
+    }
+  });
+}
+
+// 🔄 FETCH DATA
+async function fetchData() {
+  try {
+    const res = await fetch(`https://eye-tech-server.onrender.com/latest/${userId}`);
+    const data = await res.json();
+
+    if (data.error) return;
+
+    document.getElementById("voltage").innerText = "Voltage: " + data.voltage + " V";
+    document.getElementById("current").innerText = "Current: " + data.current + " A";
+    document.getElementById("power").innerText = "Power: " + data.power + " W";
+
+    // 🧠 INSIGHTS
+    const insightsDiv = document.getElementById("insights");
+    insightsDiv.innerHTML = "<h3>🧠 AI Insights</h3>";
+
+    data.insights.forEach(i => {
+      insightsDiv.innerHTML += "<p>" + i + "</p>";
+    });
+
+    // 📈 GRAPH
+    const time = new Date().toLocaleTimeString();
+    labels.push(time);
+    powerData.push(data.power);
+
+    if (labels.length > 20) {
+      labels.shift();
+      powerData.shift();
+    }
+
+    chart.update();
+
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+// ▶️ START
+function startData() {
+  initChart();
+  fetchData();
+  setInterval(fetchData, 5000);
+}
+
+// 🚀 INIT APP
+if (!surveyDone) {
+  showSurvey();
+} else {
+  showDashboard();
+}
+
+</script>
+
+</body>
+</html>
