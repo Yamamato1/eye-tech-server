@@ -5,18 +5,16 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
-# 🧠 In-memory storage
 user_data = {}
 
-# 🔌 Device power (W)
 DEVICE_POWER = {
-    "lights": 10,          # per light
+    "lights": 10,
     "tv": 100,
     "washing_machine": 500,
     "fridge": 150
 }
 
-# 🧾 SAVE SURVEY
+# 🧾 SURVEY
 @app.route('/survey', methods=['POST'])
 def save_survey():
     data = request.json
@@ -33,7 +31,7 @@ def save_survey():
     return jsonify({"status": "saved"})
 
 
-# 🔌 UPDATE DEVICE STATE
+# 🔌 DEVICE STATE
 @app.route('/usage', methods=['POST'])
 def update_usage():
     data = request.json
@@ -46,7 +44,7 @@ def update_usage():
     return jsonify({"status": "updated"})
 
 
-# ⏱️ TRACK ON/OFF AUTOMATICALLY
+# ⏱️ TRACK USAGE
 @app.route('/track', methods=['POST'])
 def track_usage():
     data = request.json
@@ -58,14 +56,11 @@ def track_usage():
         return jsonify({"error": "User not found"}), 404
 
     now = datetime.now()
-
     user = user_data[user_id]
 
-    # ON
     if action == "on":
         user["active_devices"][device] = now
 
-    # OFF
     elif action == "off":
         start_time = user["active_devices"].get(device)
 
@@ -87,7 +82,7 @@ def track_usage():
     return jsonify({"status": "tracked"})
 
 
-# 🧠 CALCULATE ENERGY FROM HISTORY
+# ⚡ ENERGY CALCULATION
 def calculate_energy(user):
     survey = user["survey"]
     history = user["history"]
@@ -110,22 +105,63 @@ def calculate_energy(user):
     return total_kwh
 
 
-# 🧠 AI INSIGHTS
-def generate_insights(kwh):
+# 🧠 HABIT ANALYSIS
+def analyze_habits(history):
+
+    habits = {}
+
+    for record in history:
+        device = record["device"]
+        day = record["day"]
+        hour = int(record["start_time"].split(" ")[1].split(":")[0])
+
+        if device not in habits:
+            habits[device] = {
+                "days": {},
+                "hours": {}
+            }
+
+        habits[device]["days"][day] = habits[device]["days"].get(day, 0) + 1
+        habits[device]["hours"][hour] = habits[device]["hours"].get(hour, 0) + 1
+
+    return habits
+
+
+# 🧠 SMART INSIGHTS (UPDATED)
+def generate_insights(user):
+
     insights = []
 
+    kwh = calculate_energy(user)
+    history = user.get("history", [])
+    habits = analyze_habits(history)
+
+    # Basic
     if kwh > 10:
         insights.append("⚠️ High energy usage")
 
     if kwh < 3:
         insights.append("💡 Very efficient usage")
 
-    insights.append(f"📊 Estimated monthly: {round(kwh*30,1)} kWh")
+    # 🔥 HABITS
+    for device, data in habits.items():
+
+        if data["days"]:
+            common_day = max(data["days"], key=data["days"].get)
+
+            if data["days"][common_day] >= 2:
+                insights.append(f"📅 You often use {device} on {common_day}")
+
+        if data["hours"]:
+            peak_hour = max(data["hours"], key=data["hours"].get)
+            insights.append(f"⏰ {device} mostly used around {peak_hour}:00")
+
+    insights.append(f"📊 Monthly estimate: {round(kwh*30,1)} kWh")
 
     return insights
 
 
-# 📊 MAIN DASHBOARD
+# 📊 DASHBOARD
 @app.route('/latest/<user_id>', methods=['GET'])
 def get_latest(user_id):
 
@@ -136,14 +172,13 @@ def get_latest(user_id):
     survey = user["survey"]
 
     kwh = calculate_energy(user) * user.get("factor", 1)
-
     price = survey.get("price_per_kwh", 0.1)
 
     return jsonify({
         "daily_kwh": round(kwh, 2),
         "monthly_kwh": round(kwh * 30, 2),
         "monthly_cost": round(kwh * 30 * price, 2),
-        "insights": generate_insights(kwh)
+        "insights": generate_insights(user)
     })
 
 
@@ -153,7 +188,7 @@ def history(user_id):
     return jsonify(user_data[user_id].get("history", []))
 
 
-# 🔁 FEEDBACK (LEARNING)
+# 🔁 FEEDBACK
 @app.route('/feedback', methods=['POST'])
 def feedback():
     data = request.json
