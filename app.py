@@ -152,22 +152,28 @@ def insights(user):
     return ins
 
 # ---------------- MAIN ----------------
-@app.route('/latest/<user_id>')
-def latest(user_id):
+# ---------------- LIVE DATA ----------------
+@app.route('/live/<user_id>')
+def live(user_id):
+    user = user_data.get(user_id)
 
-    user = user_data[user_id]
-    kwh = calculate_energy(user)
-    price = user["survey"].get("price_per_kwh",0.1)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    total_power = 0
+
+    for d in user["active_devices"]:
+        power = DEVICE_POWER.get(d, 0)
+        total_power += power
+
+    voltage = 230
+    current = total_power / voltage if voltage > 0 else 0
 
     return jsonify({
-        "daily_kwh": round(kwh,2),
-        "monthly_kwh": round(kwh*30,2),
-        "monthly_cost": round(kwh*30*price,2),
-        "peak_hour": calculate_peak(user),
-        "weekly": weekly(user),
-        "savings": calculate_savings(user),
-        "insights": insights(user)
+        "voltage": round(voltage, 2),
+        "current": round(current, 2),
+        "power": round(total_power, 2)
     })
-
+    
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000)
