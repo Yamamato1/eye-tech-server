@@ -1,9 +1,5 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>EyeTech</title>
-</head>
-
 <body style="background:#0f172a;color:white;text-align:center;font-family:sans-serif;">
 
 <h1>⚡ EyeTech</h1>
@@ -11,109 +7,72 @@
 
 <script>
 
-let userId = localStorage.getItem("user_id");
+let userId = localStorage.getItem("user_id") || "user_"+Math.random();
+localStorage.setItem("user_id", userId);
 
-if (!userId) {
-  userId = "user_" + Math.random().toString(36).substr(2,9);
-  localStorage.setItem("user_id", userId);
-}
-
-const surveyDone = localStorage.getItem("survey_done");
 const app = document.getElementById("app");
 
-// 🧾 SURVEY
 function showSurvey(){
   app.innerHTML = `
-    <h2>Setup</h2>
-    <input id="price" placeholder="Price per kWh"><br><br>
-    <input id="lights" placeholder="Lights count"><br><br>
-    <button onclick="submitSurvey()">Start</button>
-  `;
+    <input id="price" placeholder="kWh price"><br>
+    <input id="lights" placeholder="lights"><br>
+    <button onclick="submit()">Start</button>`;
 }
 
-async function submitSurvey(){
-  await fetch("https://eye-tech-server.onrender.com/survey", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      user_id:userId,
-      price_per_kwh:parseFloat(price.value),
-      lights_count:parseInt(lights.value),
-      devices:["fridge","tv","lights"]
-    })
-  });
+async function submit(){
+  await fetch("/survey",{method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({
+    user_id:userId,
+    price_per_kwh:+price.value,
+    lights_count:+lights.value
+  })});
 
-  localStorage.setItem("survey_done",true);
+  localStorage.setItem("survey_done",1);
   location.reload();
 }
 
-// 📊 DASHBOARD
-function showDashboard(){
-  app.innerHTML = `
-    <h2>Dashboard</h2>
+function showDash(){
+  app.innerHTML=`
+  <h3 id="daily"></h3>
+  <h3 id="cost"></h3>
+  <h3 id="peak"></h3>
 
-    <h3 id="daily"></h3>
-    <h3 id="monthly"></h3>
-    <h3 id="cost"></h3>
+  <label><input type="checkbox" onchange="t('lights',this)">lights</label><br>
+  <label><input type="checkbox" onchange="t('tv',this)">tv</label><br>
+  <label><input type="checkbox" onchange="t('washing_machine',this)">wash</label>
 
-    <h3>Devices</h3>
-    <label><input type="checkbox" onchange="toggle('lights',this)"> Lights</label><br>
-    <label><input type="checkbox" onchange="toggle('tv',this)"> TV</label><br>
-    <label><input type="checkbox" onchange="toggle('washing_machine',this)"> Washing</label><br>
-
-    <div id="insights"></div>
+  <div id="ins"></div>
+  <div id="week"></div>
   `;
 
-  setInterval(fetchData,5000);
+  setInterval(load,3000);
 }
 
-// 🔌 TOGGLE
-async function toggle(device, el){
-
-  let flags = JSON.parse(localStorage.getItem("usage_flags")||"{}");
-  flags[device] = el.checked;
-
-  localStorage.setItem("usage_flags", JSON.stringify(flags));
-
-  await fetch("https://eye-tech-server.onrender.com/usage",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      user_id:userId,
-      usage_flags:flags
-    })
-  });
-
-  await fetch("https://eye-tech-server.onrender.com/track",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      user_id:userId,
-      device:device,
-      action: el.checked ? "on":"off"
-    })
-  });
+async function t(d,e){
+  await fetch("/track",{method:"POST",headers:{"Content-Type":"application/json"},
+  body:JSON.stringify({user_id:userId,device:d,action:e.checked?"on":"off"})});
 }
 
-// 🔄 FETCH DATA
-async function fetchData(){
+async function load(){
+  let r=await fetch("/latest/"+userId);
+  let d=await r.json();
 
-  const res = await fetch(`https://eye-tech-server.onrender.com/latest/${userId}`);
-  const data = await res.json();
+  daily.innerText="Daily: "+d.daily_kwh;
+  cost.innerText="Cost: "+d.monthly_cost;
+  peak.innerText="Peak: "+d.peak_hour;
 
-  daily.innerText = "Daily kWh: " + data.daily_kwh;
-  monthly.innerText = "Monthly kWh: " + data.monthly_kwh;
-  cost.innerText = "Monthly Cost: $" + data.monthly_cost;
+  ins.innerHTML="";
+  d.insights.forEach(i=>ins.innerHTML+=`<p>${i}</p>`);
 
-  insights.innerHTML = "<h3>Insights</h3>";
-  data.insights.forEach(i => insights.innerHTML += "<p>"+i+"</p>");
+  week.innerHTML="";
+  for(let k in d.week){
+    week.innerHTML+=`<p>${k}: ${d.week[k]}</p>`;
+  }
 }
 
-// 🚀 INIT
-if(!surveyDone) showSurvey();
-else showDashboard();
+if(localStorage.getItem("survey_done")) showDash();
+else showSurvey();
 
 </script>
-
 </body>
 </html>
