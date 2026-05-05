@@ -1,159 +1,111 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>EyeTech Pro</title>
+<title>EyeTech Pro</title>
+<style>
+body{margin:0;font-family:system-ui;background:#020617;color:white;text-align:center}
+.container{max-width:1000px;margin:auto;padding:20px}
+.card{background:#111827;padding:20px;border-radius:15px;margin:10px}
+.big{font-size:28px}
+input{padding:10px;margin:5px;border-radius:8px;border:none}
+button{padding:10px 20px;background:#2563eb;border:none;color:white;border-radius:10px}
+</style>
 </head>
 
-<body style="
-  background: linear-gradient(135deg,#0f172a,#1e293b);
-  color:white;
-  font-family: system-ui;
-  text-align:center;
-  padding:20px;
-">
+<body>
 
 <h1>⚡ EyeTech Pro</h1>
-<div id="app"></div>
+<div id="app" class="container"></div>
 
 <script>
 
-let userId = localStorage.getItem("user_id") || "user_"+Math.random();
-localStorage.setItem("user_id", userId);
+let userId = localStorage.getItem("user_id")||"user_"+Math.random();
+localStorage.setItem("user_id",userId);
 
-const app = document.getElementById("app");
+const app=document.getElementById("app");
 
-// 🧾 SURVEY
+// SURVEY
 function showSurvey(){
-  app.innerHTML = `
-    <div style="max-width:400px;margin:auto;background:#111827;padding:20px;border-radius:16px;">
-      <h2>Setup Your Home</h2>
-      <input id="price" placeholder="Price per kWh"><br><br>
-      <input id="lights" placeholder="Lights count"><br><br>
-      <button onclick="submit()">Start</button>
-    </div>`;
+app.innerHTML=`
+<div class="card">
+<input id="price" placeholder="Price per kWh"><br>
+<input id="lights" placeholder="Lights"><br>
+<input id="tv" placeholder="TV hours"><br>
+<input id="fridge" placeholder="Fridges"><br>
+<input id="washing" placeholder="Washing/week"><br>
+<input id="oven" placeholder="Oven hours"><br>
+<input id="ac" placeholder="AC hours"><br>
+<button onclick="submit()">Start</button>
+</div>`
 }
 
 async function submit(){
-  await fetch("/survey",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      user_id:userId,
-      price_per_kwh:+price.value,
-      lights_count:+lights.value
-    })
-  });
+await fetch("/survey",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({
+user_id:userId,
+price_per_kwh:+price.value,
+lights_count:+lights.value,
+tv_hours:+tv.value,
+fridge_count:+fridge.value,
+washing_per_week:+washing.value,
+oven_hours:+oven.value,
+ac_hours:+ac.value
+})})
 
-  localStorage.setItem("survey_done",1);
-  location.reload();
+localStorage.setItem("survey_done",1);
+location.reload();
 }
 
-// 📊 DASHBOARD
+// DASHBOARD
 function showDash(){
-  app.innerHTML = `
+app.innerHTML=`
 
-  <div style="max-width:900px;margin:auto;">
+<div class="card"><h3>Daily</h3><div id="daily" class="big"></div></div>
+<div class="card"><h3>Cost</h3><div id="cost" class="big"></div></div>
+<div class="card"><h3>Peak</h3><div id="peak" class="big"></div></div>
+<div class="card"><h3>💰 Savings</h3><div id="savings" class="big"></div></div>
 
-    <div style="display:flex;gap:15px;flex-wrap:wrap;justify-content:center;">
+<div class="card">
+<label><input type="checkbox" onchange="t('lights',this)">Lights</label>
+<label><input type="checkbox" onchange="t('tv',this)">TV</label>
+<label><input type="checkbox" onchange="t('washing_machine',this)">Washing</label>
+<label><input type="checkbox" onchange="t('oven',this)">Oven</label>
+<label><input type="checkbox" onchange="t('ac',this)">AC</label>
+</div>
 
-      <div style="background:#111827;padding:20px;border-radius:16px;width:200px;">
-        <h3>⚡ Daily</h3>
-        <h2 id="daily"></h2>
-      </div>
+<div class="card" id="ins"></div>
+<div class="card" id="week"></div>
+`
 
-      <div style="background:#111827;padding:20px;border-radius:16px;width:200px;">
-        <h3>💰 Monthly Cost</h3>
-        <h2 id="cost"></h2>
-      </div>
-
-      <div style="background:#111827;padding:20px;border-radius:16px;width:200px;">
-        <h3>📊 Peak Hour</h3>
-        <h2 id="peak"></h2>
-      </div>
-
-    </div>
-
-    <br>
-
-    <div style="background:#111827;padding:20px;border-radius:16px;">
-      <h3>🔌 Devices</h3>
-
-      <label><input type="checkbox" onchange="toggle('lights',this)"> Lights</label><br>
-      <label><input type="checkbox" onchange="toggle('tv',this)"> TV</label><br>
-      <label><input type="checkbox" onchange="toggle('washing_machine',this)"> Washing Machine</label>
-    </div>
-
-    <br>
-
-    <div style="background:#111827;padding:20px;border-radius:16px;">
-      <h3>🧠 Insights</h3>
-      <div id="ins"></div>
-    </div>
-
-    <br>
-
-    <div style="background:#111827;padding:20px;border-radius:16px;">
-      <h3>📅 Weekly Usage</h3>
-      <div id="week"></div>
-    </div>
-
-  </div>
-  `;
-
-  setInterval(load,3000);
+setInterval(load,3000)
 }
 
-// 🔌 TOGGLE
-async function toggle(device, el){
-
-  await fetch("/track",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      user_id:userId,
-      device:device,
-      action: el.checked ? "on":"off"
-    })
-  });
+async function t(d,e){
+await fetch("/track",{method:"POST",headers:{"Content-Type":"application/json"},
+body:JSON.stringify({user_id:userId,device:d,action:e.checked?"on":"off"})})
 }
 
-// 🔄 LOAD DATA
 async function load(){
+let r=await fetch("/latest/"+userId)
+let d=await r.json()
 
-  let r = await fetch("/latest/"+userId);
-  let d = await r.json();
+daily.innerText=d.daily_kwh+" kWh"
+cost.innerText="$"+d.monthly_cost
+peak.innerText=d.peak_hour||"--"
+savings.innerText="$"+d.savings
 
-  document.getElementById("daily").innerText = d.daily_kwh + " kWh";
-  document.getElementById("cost").innerText = "$" + d.monthly_cost;
-  document.getElementById("peak").innerText = d.peak_hour || "--";
+ins.innerHTML=""
+d.insights.forEach(i=>ins.innerHTML+=`<p>${i}</p>`)
 
-  // insights
-  const ins = document.getElementById("ins");
-  ins.innerHTML = "";
-  d.insights.forEach(i=>{
-    ins.innerHTML += `
-      <div style="background:#1f2937;padding:10px;margin:6px;border-radius:10px;">
-        ${i}
-      </div>`;
-  });
-
-  // weekly
-  const week = document.getElementById("week");
-  week.innerHTML = "";
-
-  for(let date in d.weekly){
-    week.innerHTML += `
-      <div style="margin:5px;">
-        ${date}: ${d.weekly[date].toFixed(2)} kWh
-      </div>`;
-  }
+week.innerHTML=""
+for(let k in d.weekly){
+week.innerHTML+=`<p>${k}: ${d.weekly[k].toFixed(2)} kWh</p>`
+}
 }
 
-// 🚀 INIT
-if(localStorage.getItem("survey_done")) showDash();
-else showSurvey();
+if(localStorage.getItem("survey_done")) showDash()
+else showSurvey()
 
 </script>
-
 </body>
 </html>
