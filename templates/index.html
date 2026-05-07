@@ -1,113 +1,478 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>EyeTech Pro</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body{margin:0;font-family:system-ui;background:#020617;color:white;text-align:center}
-.container{max-width:1000px;margin:auto;padding:20px}
-.card{background:#111827;padding:20px;border-radius:15px;margin:10px}
-.big{font-size:28px}
-input{padding:10px;margin:5px;border-radius:8px;border:none}
-button{padding:10px 20px;background:#2563eb;border:none;color:white;border-radius:10px}
+
+body{
+    margin:0;
+    background:#0b1120;
+    color:white;
+    font-family:Arial;
+}
+
+.container{
+    padding:20px;
+}
+
+.card{
+    background:#111827;
+    padding:20px;
+    border-radius:20px;
+    margin-bottom:20px;
+    box-shadow:0 0 20px rgba(0,0,0,0.4);
+}
+
+h1,h2,h3{
+    margin-top:0;
+}
+
+input,select,button{
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border:none;
+    border-radius:10px;
+    font-size:16px;
+}
+
+button{
+    background:#2563eb;
+    color:white;
+    cursor:pointer;
+}
+
+.toggle{
+    display:flex;
+    justify-content:space-between;
+    margin-top:15px;
+}
+
+.status{
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:20px;
+}
+
+.connected{
+    background:#14532d;
+}
+
+.disconnected{
+    background:#7f1d1d;
+}
+
+.chat-box{
+    height:200px;
+    overflow:auto;
+    background:#1f2937;
+    padding:10px;
+    border-radius:10px;
+    margin-bottom:10px;
+}
+
+.message{
+    margin-bottom:10px;
+}
+
+.user{
+    color:#60a5fa;
+}
+
+.ai{
+    color:#34d399;
+}
+
 </style>
 </head>
 
 <body>
 
+<div class="container">
+
 <h1>⚡ EyeTech Pro</h1>
-<div id="app" class="container"></div>
+
+<div id="connection" class="status disconnected">
+Disconnected
+</div>
+
+<div id="app"></div>
+
+</div>
 
 <script>
 
-let userId = localStorage.getItem("user_id")||"user_"+Math.random();
-localStorage.setItem("user_id",userId);
+const API = "https://eye-tech-server.onrender.com";
 
-const app=document.getElementById("app");
+let userId = localStorage.getItem("user_id");
 
+if(!userId){
+    userId = "user_" + Math.random().toString(36).substr(2,9);
+    localStorage.setItem("user_id", userId);
+}
+
+const app = document.getElementById("app");
+
+const surveyDone = localStorage.getItem("survey_done");
+
+
+// ======================================
 // SURVEY
+// ======================================
+
 function showSurvey(){
-app.innerHTML=`
-<div class="card">
-<input id="price" placeholder="Price per kWh"><br>
-<input id="lights" placeholder="Lights"><br>
-<input id="tv" placeholder="TV hours"><br>
-<input id="fridge" placeholder="Fridges"><br>
-<input id="washing" placeholder="Washing/week"><br>
-<input id="oven" placeholder="Oven hours"><br>
-<input id="ac" placeholder="AC hours"><br>
-<button onclick="submit()">Start</button>
-</div>`
-}
 
-async function submit(){
-await fetch("/survey",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({
-user_id:userId,
-price_per_kwh:+price.value,
-lights_count:+lights.value,
-tv_hours:+tv.value,
-fridge_count:+fridge.value,
-washing_per_week:+washing.value,
-oven_hours:+oven.value,
-ac_hours:+ac.value
-})})
-
-localStorage.setItem("survey_done",1);
-location.reload();
-localStorage.setItem("survey_done", true);
-location.reload();
-}
-
-// DASHBOARD
-function showDash(){
-app.innerHTML=`
-
-<div class="card"><h3>Daily</h3><div id="daily" class="big"></div></div>
-<div class="card"><h3>Cost</h3><div id="cost" class="big"></div></div>
-<div class="card"><h3>Peak</h3><div id="peak" class="big"></div></div>
-<div class="card"><h3>💰 Savings</h3><div id="savings" class="big"></div></div>
+app.innerHTML = `
 
 <div class="card">
-<label><input type="checkbox" onchange="t('lights',this)">Lights</label>
-<label><input type="checkbox" onchange="t('tv',this)">TV</label>
-<label><input type="checkbox" onchange="t('washing_machine',this)">Washing</label>
-<label><input type="checkbox" onchange="t('oven',this)">Oven</label>
-<label><input type="checkbox" onchange="t('ac',this)">AC</label>
+
+<h2>Home Setup</h2>
+
+<input id="price" placeholder="Electricity price per kWh">
+
+<input id="lights" placeholder="Number of lights">
+
+<input id="tv" placeholder="TV quantity">
+
+<input id="fridge" placeholder="Fridge quantity">
+
+<input id="washing" placeholder="Washing machine quantity">
+
+<input id="oven" placeholder="Oven quantity">
+
+<input id="ac" placeholder="AC quantity">
+
+<select id="ac_type">
+<option value="old">Old AC</option>
+<option value="normal">Normal AC</option>
+<option value="inverter">Inverter AC</option>
+</select>
+
+<button onclick="submitSurvey()">
+Start EyeTech
+</button>
+
 </div>
 
-<div class="card" id="ins"></div>
-<div class="card" id="week"></div>
-`
+`;
 
-setInterval(load,3000)
 }
 
-async function t(d,e){
-await fetch("/track",{method:"POST",headers:{"Content-Type":"application/json"},
-body:JSON.stringify({user_id:userId,device:d,action:e.checked?"on":"off"})})
+
+// ======================================
+// SUBMIT SURVEY
+// ======================================
+
+async function submitSurvey(){
+
+const body = {
+    user_id:userId,
+    price_per_kwh:parseFloat(price.value),
+    lights:parseInt(lights.value),
+    tv:parseInt(tv.value),
+    fridge:parseInt(fridge.value),
+    washing_machine:parseInt(washing.value),
+    oven:parseInt(oven.value),
+    ac:parseInt(ac.value),
+    ac_type:ac_type.value
+};
+
+const res = await fetch(API + "/survey",{
+    method:"POST",
+    headers:{
+        "Content-Type":"application/json"
+    },
+    body:JSON.stringify(body)
+});
+
+if(res.ok){
+
+    localStorage.setItem("survey_done", true);
+
+    location.reload();
 }
 
-async function load(){
-let r=await fetch("/latest/"+userId)
-let d=await r.json()
-
-daily.innerText=d.daily_kwh+" kWh"
-cost.innerText="$"+d.monthly_cost
-peak.innerText=d.peak_hour||"--"
-savings.innerText="$"+d.savings
-
-ins.innerHTML=""
-d.insights.forEach(i=>ins.innerHTML+=`<p>${i}</p>`)
-
-week.innerHTML=""
-for(let k in d.weekly){
-week.innerHTML+=`<p>${k}: ${d.weekly[k].toFixed(2)} kWh</p>`
-}
 }
 
-if(localStorage.getItem("survey_done")) showDash()
-else showSurvey()
+
+// ======================================
+// DASHBOARD
+// ======================================
+
+function showDashboard(){
+
+app.innerHTML = `
+
+<div class="card">
+
+<h2>⚡ Live Energy</h2>
+
+<h3 id="voltage">Voltage: --</h3>
+<h3 id="current">Current: --</h3>
+<h3 id="power">Power: --</h3>
+
+</div>
+
+<div class="card">
+
+<h2>📊 Usage</h2>
+
+<h3 id="daily">Daily kWh: --</h3>
+<h3 id="monthly">Monthly kWh: --</h3>
+<h3 id="cost">Monthly Cost: --</h3>
+<h3 id="peak">Peak Hour: --</h3>
+<h3 id="savings">Savings: --</h3>
+
+<div id="insights"></div>
+
+</div>
+
+<div class="card">
+
+<h2>🔌 Devices</h2>
+
+<div class="toggle">
+<label>Lights</label>
+<input type="checkbox" onchange="toggleDevice('lights',this)">
+</div>
+
+<div class="toggle">
+<label>TV</label>
+<input type="checkbox" onchange="toggleDevice('tv',this)">
+</div>
+
+<div class="toggle">
+<label>Fridge</label>
+<input type="checkbox" onchange="toggleDevice('fridge',this)">
+</div>
+
+<div class="toggle">
+<label>Washing Machine</label>
+<input type="checkbox" onchange="toggleDevice('washing_machine',this)">
+</div>
+
+<div class="toggle">
+<label>Oven</label>
+<input type="checkbox" onchange="toggleDevice('oven',this)">
+</div>
+
+<div class="toggle">
+<label>AC</label>
+<input type="checkbox" onchange="toggleDevice('ac',this)">
+</div>
+
+</div>
+
+<div class="card">
+
+<h2>📈 Weekly Usage</h2>
+
+<canvas id="chart"></canvas>
+
+</div>
+
+<div class="card">
+
+<h2>🤖 EyeTech AI</h2>
+
+<div class="chat-box" id="chat"></div>
+
+<input id="question" placeholder="Ask EyeTech AI...">
+
+<button onclick="askAI()">
+Ask AI
+</button>
+
+</div>
+
+`;
+
+createChart();
+
+setInterval(fetchLive,3000);
+
+setInterval(fetchDashboard,3000);
+
+}
+
+
+// ======================================
+// TOGGLE DEVICE
+// ======================================
+
+async function toggleDevice(device,el){
+
+await fetch(API + "/track",{
+    method:"POST",
+    headers:{
+        "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+        user_id:userId,
+        device:device,
+        action: el.checked ? "on":"off"
+    })
+});
+
+}
+
+
+// ======================================
+// LIVE DATA
+// ======================================
+
+async function fetchLive(){
+
+try{
+
+const res = await fetch(API + "/live/" + userId);
+
+const data = await res.json();
+
+if(data.error){
+
+document.getElementById("connection").className = "status disconnected";
+document.getElementById("connection").innerText = "Disconnected";
+
+return;
+}
+
+document.getElementById("connection").className = "status connected";
+document.getElementById("connection").innerText = "Connected";
+
+voltage.innerText = "Voltage: " + data.voltage + " V";
+current.innerText = "Current: " + data.current + " A";
+power.innerText = "Power: " + data.power + " W";
+
+}catch(e){
+
+document.getElementById("connection").className = "status disconnected";
+document.getElementById("connection").innerText = "Disconnected";
+
+}
+
+}
+
+
+// ======================================
+// DASHBOARD DATA
+// ======================================
+
+async function fetchDashboard(){
+
+const res = await fetch(API + "/latest/" + userId);
+
+const data = await res.json();
+
+daily.innerText = "Daily kWh: " + data.daily_kwh;
+
+monthly.innerText = "Monthly kWh: " + data.monthly_kwh;
+
+cost.innerText = "Monthly Cost: $" + data.monthly_cost;
+
+peak.innerText = "Peak Hour: " + data.peak_hour;
+
+savings.innerText = "Savings: $" + data.savings;
+
+insights.innerHTML = "";
+
+data.insights.forEach(i=>{
+    insights.innerHTML += `<p>${i}</p>`;
+});
+
+updateChart(data.weekly);
+
+}
+
+
+// ======================================
+// AI CHAT
+// ======================================
+
+async function askAI(){
+
+const q = question.value;
+
+chat.innerHTML += `
+<div class="message user">
+You: ${q}
+</div>
+`;
+
+const res = await fetch(API + "/ai-chat",{
+    method:"POST",
+    headers:{
+        "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+        message:q
+    })
+});
+
+const data = await res.json();
+
+chat.innerHTML += `
+<div class="message ai">
+EyeTech AI: ${data.reply}
+</div>
+`;
+
+question.value = "";
+
+}
+
+
+// ======================================
+// CHART
+// ======================================
+
+let chart;
+
+function createChart(){
+
+const ctx = document.getElementById('chart');
+
+chart = new Chart(ctx,{
+    type:'line',
+    data:{
+        labels:[],
+        datasets:[{
+            label:'kWh',
+            data:[]
+        }]
+    }
+});
+
+}
+
+function updateChart(weekly){
+
+chart.data.labels = Object.keys(weekly);
+
+chart.data.datasets[0].data = Object.values(weekly);
+
+chart.update();
+
+}
+
+
+// ======================================
+// INIT
+// ======================================
+
+if(!surveyDone){
+    showSurvey();
+}else{
+    showDashboard();
+}
 
 </script>
+
 </body>
 </html>
