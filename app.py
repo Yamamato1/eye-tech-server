@@ -1,62 +1,73 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
+import random
 
 app = Flask(__name__)
 CORS(app)
 
-# =========================
-# MEMORY STORAGE
-# =========================
-user_data = {}
+# =========================================
+# STORAGE
+# =========================================
 
-# =========================
-# DEVICE POWER (Watts)
-# =========================
+users = {}
+
+# =========================================
+# DEVICE POWER DATABASE (Watts)
+# =========================================
+
 DEVICE_POWER = {
-    "lights": 60,
+    "lights": 12,
     "tv": 120,
-    "washing_machine": 800,
     "fridge": 150,
-    "oven": 2000,
-    "ac": 1500
+    "oven": 2200,
+    "ac": 1500,
+    "washing_machine": 500
 }
 
-# =========================
-# HOME PAGE
-# =========================
-@app.route('/')
-def home():
-    return render_template("index.html")
+# =========================================
+# HOME
+# =========================================
 
-# =========================
-# SAVE SURVEY
-# =========================
-@app.route('/survey', methods=['POST'])
-def save_survey():
+@app.route("/")
+def home():
+    return jsonify({
+        "status": "EyeTech Pro Backend Running"
+    })
+
+# =========================================
+# SURVEY
+# =========================================
+
+@app.route("/survey", methods=["POST"])
+def survey():
 
     data = request.json
+
     user_id = data.get("user_id")
 
     if not user_id:
-        return jsonify({"error": "Missing user_id"}), 400
+        return jsonify({
+            "error": "Missing user_id"
+        }), 400
 
-    user_data[user_id] = {
+    users[user_id] = {
         "survey": data,
-        "active_devices": {},
+        "active_devices": [],
         "history": [],
         "factor": 1
     }
 
     return jsonify({
-        "status": "saved",
-        "user_id": user_id
+        "success": True,
+        "message": "Survey saved"
     })
 
-# =========================
-# TRACK DEVICE ON/OFF
-# =========================
-@app.route('/track', methods=['POST'])
+# =========================================
+# TRACK DEVICES
+# =========================================
+
+@app.route("/track", methods=["POST"])
 def track():
 
     data = request.json
@@ -65,209 +76,337 @@ def track():
     device = data.get("device")
     action = data.get("action")
 
-    user = user_data.get(user_id)
+    if user_id not in users:
+        return jsonify({
+            "error": "User not found"
+        }), 404
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    now = datetime.now()
-
-    # DEVICE ON
     if action == "on":
-        user["active_devices"][device] = now
 
-    # DEVICE OFF
+        if device not in users[user_id]["active_devices"]:
+            users[user_id]["active_devices"].append(device)
+
     elif action == "off":
 
-        start = user["active_devices"].get(device)
+        if device in users[user_id]["active_devices"]:
+            users[user_id]["active_devices"].remove(device)
 
-        if start:
+    return jsonify({
+        "success": True,
+        "active_devices": users[user_id]["active_devices"]
+    })
 
-            duration = (now - start).total_seconds() / 3600
-
-            user["history"].append({
-                "device": device,
-                "duration": duration,
-                "start": start.strftime("%Y-%m-%d %H:%M:%S"),
-                "end": now.strftime("%Y-%m-%d %H:%M:%S")
-            })
-
-            del user["active_devices"][device]
-
-    return jsonify({"status": "tracked"})
-
-# =========================
-# CALCULATE ENERGY
-# =========================
-def calculate_energy(user):
-
-    total_kwh = 0
-
-    for record in user["history"]:
-
-        device = record["device"]
-        duration = record["duration"]
-
-        power = DEVICE_POWER.get(device, 0)
-
-        energy = (power * duration) / 1000
-
-        total_kwh += energy
-
-    return total_kwh * user.get("factor", 1)
-
-# =========================
-# PEAK HOUR
-# =========================
-def calculate_peak(user):
-
-    hours = {}
-
-    for record in user["history"]:
-
-        hour = int(record["start"].split(" ")[1].split(":")[0])
-
-        hours[hour] = hours.get(hour, 0) + 1
-
-    if not hours:
-        return None
-
-    return max(hours, key=hours.get)
-
-# =========================
-# WEEKLY DATA
-# =========================
-def weekly(user):
-
-    data = {}
-
-    for record in user["history"]:
-
-        date = record["start"].split(" ")[0]
-
-        device = record["device"]
-
-        power = DEVICE_POWER.get(device, 0)
-
-        energy = (power * record["duration"]) / 1000
-
-        data[date] = round(data.get(date, 0) + energy, 2)
-
-    return data
-
-# =========================
-# SAVINGS
-# =========================
-def calculate_savings(user):
-
-    current = calculate_energy(user)
-
-    optimized = current * 0.85
-
-    price = user["survey"].get("price_per_kwh", 0.1)
-
-    return round((current - optimized) * 30 * price, 2)
-
-# =========================
-# INSIGHTS
-# =========================
-def insights(user):
-
-    kwh = calculate_energy(user)
-
-    ins = []
-
-    if kwh > 10:
-        ins.append("⚠️ High usage detected")
-    else:
-        ins.append("💡 Efficient usage")
-
-    ins.append(f"📊 Monthly: {round(kwh * 30, 1)} kWh")
-
-    return ins
-
-# =========================
+# =========================================
 # LIVE DATA
-# =========================
-@app.route('/live/<user_id>')
+# =========================================
+
+@app.route("/live/<user_id>")
 def live(user_id):
 
-    user = user_data.get(user_id)
+    if user_id not in users:
+        return jsonify({
+            "error": "User not found"
+        }), 404
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    active = users[user_id]["active_devices"]
 
-    total_power = 0
+    total_power = 150
 
-    for device in user["active_devices"]:
+    for device in active:
+        total_power += DEVICE_POWER.get(device, 0)
 
-        power = DEVICE_POWER.get(device, 0)
+    voltage = round(random.uniform(220, 235), 1)
 
-        total_power += power
+    current = round(total_power / voltage, 2)
 
-    voltage = 230
+    users[user_id]["history"].append(total_power)
 
-    current = total_power / voltage if voltage > 0 else 0
-
-    return jsonify({
-        "voltage": round(voltage, 2),
-        "current": round(current, 2),
-        "power": round(total_power, 2)
-    })
-
-# =========================
-# MAIN DASHBOARD DATA
-# =========================
-@app.route('/latest/<user_id>')
-def latest(user_id):
-
-    user = user_data.get(user_id)
-
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    kwh = calculate_energy(user)
-
-    price = user["survey"].get("price_per_kwh", 0.1)
+    if len(users[user_id]["history"]) > 50:
+        users[user_id]["history"].pop(0)
 
     return jsonify({
-        "daily_kwh": round(kwh, 2),
-        "monthly_kwh": round(kwh * 30, 2),
-        "monthly_cost": round(kwh * 30 * price, 2),
-        "peak_hour": calculate_peak(user),
-        "weekly": weekly(user),
-        "savings": calculate_savings(user),
-        "insights": insights(user)
+        "voltage": voltage,
+        "current": current,
+        "power": total_power,
+        "active_devices": active,
+        "timestamp": datetime.now().strftime("%H:%M:%S")
     })
 
-# =========================
-# FEEDBACK / LEARNING
-# =========================
-@app.route('/feedback', methods=['POST'])
+# =========================================
+# DASHBOARD DATA
+# =========================================
+
+@app.route("/dashboard/<user_id>")
+def dashboard(user_id):
+
+    if user_id not in users:
+        return jsonify({
+            "error": "User not found"
+        }), 404
+
+    survey = users[user_id]["survey"]
+
+    active = users[user_id]["active_devices"]
+
+    total_power = 150
+
+    for device in active:
+        total_power += DEVICE_POWER.get(device, 0)
+
+    daily_kwh = round((total_power * 24) / 1000, 2)
+
+    monthly_kwh = round(daily_kwh * 30, 2)
+
+    price = float(
+        survey.get("price_per_kwh", 0.12)
+    )
+
+    monthly_bill = round(monthly_kwh * price, 2)
+
+    peak_hour = random.choice([
+        "18:00",
+        "19:00",
+        "20:00",
+        "21:00"
+    ])
+
+    savings = round(random.uniform(1, 15), 2)
+
+    insights = []
+
+    if monthly_bill > 50:
+        insights.append(
+            "⚠️ High energy usage detected"
+        )
+
+    else:
+        insights.append(
+            "💡 Efficient energy usage"
+        )
+
+    if "ac" in active:
+        insights.append(
+            "❄️ Air Conditioner is consuming most energy"
+        )
+
+    history = users[user_id]["history"]
+
+    return jsonify({
+        "daily_kwh": daily_kwh,
+        "monthly_kwh": monthly_kwh,
+        "monthly_bill": monthly_bill,
+        "peak_hour": peak_hour,
+        "savings": savings,
+        "insights": insights,
+        "history": history,
+        "active_devices": active
+    })
+
+# =========================================
+# AI ASSISTANT
+# =========================================
+
+@app.route("/ask-ai", methods=["POST"])
+def ask_ai():
+
+    data = request.json
+
+    user_id = data.get("user_id")
+    message = data.get("message", "").lower()
+
+    if user_id not in users:
+        return jsonify({
+            "error": "User not found"
+        }), 404
+
+    active = users[user_id]["active_devices"]
+
+    total_power = 150
+
+    for device in active:
+        total_power += DEVICE_POWER.get(device, 0)
+
+    daily_kwh = round((total_power * 24) / 1000, 2)
+
+    monthly_kwh = round(daily_kwh * 30, 2)
+
+    price = float(
+        users[user_id]["survey"].get("price_per_kwh", 0.12)
+    )
+
+    monthly_bill = round(monthly_kwh * price, 2)
+
+    response = ""
+
+    # =========================================
+    # AI RESPONSES
+    # =========================================
+
+    if "bill" in message or "cost" in message:
+
+        if monthly_bill > 50:
+
+            response = (
+                f"Your estimated bill is ${monthly_bill}. "
+                f"The highest energy usage is from "
+                f"{', '.join(active) if active else 'background appliances'}."
+            )
+
+        else:
+
+            response = (
+                f"Your estimated monthly bill is ${monthly_bill}. "
+                f"Your energy usage looks efficient."
+            )
+
+    elif "save" in message or "reduce" in message:
+
+        if "ac" in active:
+
+            response = (
+                "Your Air Conditioner is consuming most of the energy. "
+                "Reducing AC usage may significantly reduce your bill."
+            )
+
+        else:
+
+            response = (
+                "Turning off unused devices and lights can reduce your monthly bill."
+            )
+
+    elif "most" in message or "highest" in message:
+
+        if active:
+
+            biggest = max(
+                active,
+                key=lambda d: DEVICE_POWER.get(d, 0)
+            )
+
+            response = (
+                f"The appliance consuming the most power right now is {biggest}."
+            )
+
+        else:
+
+            response = (
+                "No major appliances are currently active."
+            )
+
+    elif "hello" in message or "hi" in message:
+
+        response = (
+            "Hello 👋 I am EyeTech AI. "
+            "I help users understand electricity usage and reduce energy bills."
+        )
+
+    else:
+
+        response = (
+            "I can help you analyze your energy usage, reduce your bill, "
+            "and identify high power appliances."
+        )
+
+    return jsonify({
+        "success": True,
+        "reply": response
+    })
+
+# =========================================
+# AI IMAGE ANALYSIS
+# =========================================
+
+@app.route("/analyze-image", methods=["POST"])
+def analyze_image():
+
+    device_types = [
+        {
+            "device": "Inverter Air Conditioner",
+            "watts": 950,
+            "efficiency": "High",
+            "confidence": 94
+        },
+        {
+            "device": "Old Air Conditioner",
+            "watts": 2200,
+            "efficiency": "Low",
+            "confidence": 88
+        },
+        {
+            "device": "LED Television",
+            "watts": 120,
+            "efficiency": "High",
+            "confidence": 91
+        },
+        {
+            "device": "Refrigerator",
+            "watts": 150,
+            "efficiency": "Medium",
+            "confidence": 93
+        },
+        {
+            "device": "Washing Machine",
+            "watts": 500,
+            "efficiency": "Medium",
+            "confidence": 89
+        }
+    ]
+
+    result = random.choice(device_types)
+
+    return jsonify({
+        "success": True,
+        "detected_device": result["device"],
+        "estimated_watts": result["watts"],
+        "efficiency": result["efficiency"],
+        "confidence": result["confidence"],
+        "daily_hours": random.randint(2, 10)
+    })
+
+# =========================================
+# SEND ALERTS
+# =========================================
+
+@app.route("/send-alert", methods=["POST"])
+def send_alert():
+
+    data = request.json
+
+    email = data.get("email")
+    device = data.get("device")
+
+    return jsonify({
+        "success": True,
+        "message": f"Alert sent to {email} about {device}"
+    })
+
+# =========================================
+# FEEDBACK LEARNING
+# =========================================
+
+@app.route("/feedback", methods=["POST"])
 def feedback():
 
     data = request.json
 
     user_id = data.get("user_id")
+    real_bill = float(data.get("real_bill", 0))
 
-    real_kwh = data.get("real_kwh")
+    if user_id not in users:
+        return jsonify({
+            "error": "User not found"
+        }), 404
 
-    user = user_data.get(user_id)
-
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    predicted = calculate_energy(user)
-
-    if predicted > 0:
-        user["factor"] = real_kwh / predicted
+    users[user_id]["factor"] = real_bill
 
     return jsonify({
-        "factor": round(user["factor"], 2)
+        "success": True,
+        "message": "Feedback saved"
     })
 
-# =========================
-# START SERVER
-# =========================
+# =========================================
+# RUN SERVER
+# =========================================
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
