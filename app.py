@@ -1,412 +1,354 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+import os
 import random
 
 app = Flask(__name__)
 CORS(app)
 
-# =========================================
-# STORAGE
-# =========================================
+# =========================
+# DATABASE
+# =========================
 
-users = {}
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# =========================================
-# DEVICE POWER DATABASE (Watts)
-# =========================================
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+db = SQLAlchemy(app)
+
+# =========================
+# MODELS
+# =========================
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(200), unique=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Appliance(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.String(200))
+    name = db.Column(db.String(100))
+    brand = db.Column(db.String(100))
+    power = db.Column(db.Float)
+    hours = db.Column(db.Float)
+    image_url = db.Column(db.String(500))
+    status = db.Column(db.Boolean, default=False)
+
+class EnergyHistory(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_email = db.Column(db.String(200))
+    voltage = db.Column(db.Float)
+    current = db.Column(db.Float)
+    power = db.Column(db.Float)
+    daily_kwh = db.Column(db.Float)
+    monthly_bill = db.Column(db.Float)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+# =========================
+# CREATE DATABASE
+# =========================
+
+with app.app_context():
+    db.create_all()
+
+# =========================
+# DEVICE DEFAULTS
+# =========================
 
 DEVICE_POWER = {
-    "lights": 12,
-    "tv": 120,
+    "lights": 10,
+    "tv": 100,
     "fridge": 150,
-    "oven": 2200,
     "ac": 1500,
-    "washing_machine": 500
+    "oven": 2000
 }
 
-# =========================================
+# =========================
 # HOME
-# =========================================
+# =========================
 
 @app.route("/")
 def home():
     return jsonify({
-        "status": "EyeTech Pro Backend Running"
+        "status": "running",
+        "message": "EyeTech AI Backend Live"
     })
 
-# =========================================
-# SURVEY
-# =========================================
+# =========================
+# LOGIN / REGISTER
+# =========================
 
-@app.route("/survey", methods=["POST"])
-def survey():
-
+@app.route("/login", methods=["POST"])
+def login():
     data = request.json
+    email = data.get("email")
 
-    user_id = data.get("user_id")
+    user = User.query.filter_by(email=email).first()
 
-    if not user_id:
-        return jsonify({
-            "error": "Missing user_id"
-        }), 400
+    if not user:
+        user = User(email=email)
+        db.session.add(user)
+        db.session.commit()
 
-    users[user_id] = {
-        "survey": data,
-        "active_devices": [],
-        "history": [],
-        "factor": 1
-    }
+    code = random.randint(100000, 999999)
 
     return jsonify({
         "success": True,
-        "message": "Survey saved"
+        "email": email,
+        "verification_code": code
     })
 
-# =========================================
-# TRACK DEVICES
-# =========================================
+# =========================
+# ADD APPLIANCE
+# =========================
 
-@app.route("/track", methods=["POST"])
-def track():
-
+@app.route("/add-appliance", methods=["POST"])
+def add_appliance():
     data = request.json
 
-    user_id = data.get("user_id")
-    device = data.get("device")
-    action = data.get("action")
+    appliance = Appliance(
+        user_email=data.get("email"),
+        name=data.get("name"),
+        brand=data.get("brand"),
+        power=data.get("power"),
+        hours=data.get("hours"),
+        image_url=data.get("image_url"),
+        status=True
+    )
 
-    if user_id not in users:
-        return jsonify({
-            "error": "User not found"
-        }), 404
-
-    if action == "on":
-
-        if device not in users[user_id]["active_devices"]:
-            users[user_id]["active_devices"].append(device)
-
-    elif action == "off":
-
-        if device in users[user_id]["active_devices"]:
-            users[user_id]["active_devices"].remove(device)
+    db.session.add(appliance)
+    db.session.commit()
 
     return jsonify({
         "success": True,
-        "active_devices": users[user_id]["active_devices"]
+        "message": "Appliance added"
     })
 
-# =========================================
+# =========================
 # LIVE DATA
-# =========================================
+# =========================
 
-@app.route("/live/<user_id>")
-def live(user_id):
+@app.route("/live/<email>")
+def live(email):
 
-    if user_id not in users:
-        return jsonify({
-            "error": "User not found"
-        }), 404
+    appliances = Appliance.query.filter_by(
+        user_email=email
+    ).all()
 
-    active = users[user_id]["active_devices"]
+    total_power = 0
 
-    total_power = 150
+    for a in appliances:
+        if a.status:
+            total_power += a.power
 
-    for device in active:
-        total_power += DEVICE_POWER.get(device, 0)
-
-    voltage = round(random.uniform(220, 235), 1)
-
+    voltage = 230
     current = round(total_power / voltage, 2)
-
-    users[user_id]["history"].append(total_power)
-
-    if len(users[user_id]["history"]) > 50:
-        users[user_id]["history"].pop(0)
 
     return jsonify({
         "voltage": voltage,
         "current": current,
         "power": total_power,
-        "active_devices": active,
-        "timestamp": datetime.now().strftime("%H:%M:%S")
+        "active_devices": len(appliances)
     })
 
-# =========================================
-# DASHBOARD DATA
-# =========================================
+# =========================
+# DASHBOARD
+# =========================
 
-@app.route("/dashboard/<user_id>")
-def dashboard(user_id):
+@app.route("/dashboard/<email>")
+def dashboard(email):
 
-    if user_id not in users:
-        return jsonify({
-            "error": "User not found"
-        }), 404
+    appliances = Appliance.query.filter_by(
+        user_email=email
+    ).all()
 
-    survey = users[user_id]["survey"]
+    total_power = 0
+    daily_kwh = 0
 
-    active = users[user_id]["active_devices"]
+    for a in appliances:
+        if a.status:
+            total_power += a.power
+            daily_kwh += (a.power * a.hours) / 1000
 
-    total_power = 150
+    monthly_kwh = daily_kwh * 30
+    monthly_bill = round(monthly_kwh * 0.12, 2)
 
-    for device in active:
-        total_power += DEVICE_POWER.get(device, 0)
-
-    daily_kwh = round((total_power * 24) / 1000, 2)
-
-    monthly_kwh = round(daily_kwh * 30, 2)
-
-    price = float(
-        survey.get("price_per_kwh", 0.12)
+    history = EnergyHistory(
+        user_email=email,
+        voltage=230,
+        current=round(total_power / 230, 2),
+        power=total_power,
+        daily_kwh=daily_kwh,
+        monthly_bill=monthly_bill
     )
 
-    monthly_bill = round(monthly_kwh * price, 2)
-
-    peak_hour = random.choice([
-        "18:00",
-        "19:00",
-        "20:00",
-        "21:00"
-    ])
-
-    savings = round(random.uniform(1, 15), 2)
-
-    insights = []
-
-    if monthly_bill > 50:
-        insights.append(
-            "⚠️ High energy usage detected"
-        )
-
-    else:
-        insights.append(
-            "💡 Efficient energy usage"
-        )
-
-    if "ac" in active:
-        insights.append(
-            "❄️ Air Conditioner is consuming most energy"
-        )
-
-    history = users[user_id]["history"]
+    db.session.add(history)
+    db.session.commit()
 
     return jsonify({
-        "daily_kwh": daily_kwh,
-        "monthly_kwh": monthly_kwh,
+        "daily_kwh": round(daily_kwh, 2),
+        "monthly_kwh": round(monthly_kwh, 2),
         "monthly_bill": monthly_bill,
-        "peak_hour": peak_hour,
-        "savings": savings,
-        "insights": insights,
-        "history": history,
-        "active_devices": active
+        "power": total_power,
+        "ai_insight": get_ai_insight(monthly_bill),
+        "recommendation": get_recommendation(total_power)
     })
 
-# =========================================
-# AI ASSISTANT
-# =========================================
+# =========================
+# TOGGLE DEVICE
+# =========================
+
+@app.route("/toggle-device", methods=["POST"])
+def toggle_device():
+
+    data = request.json
+
+    appliance = Appliance.query.get(data.get("id"))
+
+    if not appliance:
+        return jsonify({
+            "success": False
+        })
+
+    appliance.status = not appliance.status
+
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "status": appliance.status
+    })
+
+# =========================
+# AI CHAT
+# =========================
 
 @app.route("/ask-ai", methods=["POST"])
 def ask_ai():
 
     data = request.json
-
-    user_id = data.get("user_id")
     message = data.get("message", "").lower()
 
-    if user_id not in users:
-        return jsonify({
-            "error": "User not found"
-        }), 404
+    response = "I am your EyeTech AI assistant."
 
-    active = users[user_id]["active_devices"]
+    if "usage" in message:
+        response = "Your biggest energy usage usually comes from AC and ovens."
 
-    total_power = 150
+    elif "bill" in message:
+        response = "Your estimated monthly bill is based on appliance activity and daily behavior."
 
-    for device in active:
-        total_power += DEVICE_POWER.get(device, 0)
+    elif "save" in message:
+        response = "Try reducing AC hours and turning lights off during daytime."
 
-    daily_kwh = round((total_power * 24) / 1000, 2)
-
-    monthly_kwh = round(daily_kwh * 30, 2)
-
-    price = float(
-        users[user_id]["survey"].get("price_per_kwh", 0.12)
-    )
-
-    monthly_bill = round(monthly_kwh * price, 2)
-
-    response = ""
-
-    # =========================================
-    # AI RESPONSES
-    # =========================================
-
-    if "bill" in message or "cost" in message:
-
-        if monthly_bill > 50:
-
-            response = (
-                f"Your estimated bill is ${monthly_bill}. "
-                f"The highest energy usage is from "
-                f"{', '.join(active) if active else 'background appliances'}."
-            )
-
-        else:
-
-            response = (
-                f"Your estimated monthly bill is ${monthly_bill}. "
-                f"Your energy usage looks efficient."
-            )
-
-    elif "save" in message or "reduce" in message:
-
-        if "ac" in active:
-
-            response = (
-                "Your Air Conditioner is consuming most of the energy. "
-                "Reducing AC usage may significantly reduce your bill."
-            )
-
-        else:
-
-            response = (
-                "Turning off unused devices and lights can reduce your monthly bill."
-            )
-
-    elif "most" in message or "highest" in message:
-
-        if active:
-
-            biggest = max(
-                active,
-                key=lambda d: DEVICE_POWER.get(d, 0)
-            )
-
-            response = (
-                f"The appliance consuming the most power right now is {biggest}."
-            )
-
-        else:
-
-            response = (
-                "No major appliances are currently active."
-            )
+    elif "fridge" in message:
+        response = "Fridges normally stay on continuously for food safety."
 
     elif "hello" in message or "hi" in message:
-
-        response = (
-            "Hello 👋 I am EyeTech AI. "
-            "I help users understand electricity usage and reduce energy bills."
-        )
-
-    else:
-
-        response = (
-            "I can help you analyze your energy usage, reduce your bill, "
-            "and identify high power appliances."
-        )
+        response = "Hello 👋 How can I help you manage your energy today?"
 
     return jsonify({
-        "success": True,
         "reply": response
     })
 
-# =========================================
-# AI IMAGE ANALYSIS
-# =========================================
+# =========================
+# IMAGE ANALYSIS
+# =========================
 
 @app.route("/analyze-image", methods=["POST"])
 def analyze_image():
 
-    device_types = [
-        {
-            "device": "Inverter Air Conditioner",
-            "watts": 950,
-            "efficiency": "High",
-            "confidence": 94
-        },
-        {
-            "device": "Old Air Conditioner",
-            "watts": 2200,
-            "efficiency": "Low",
-            "confidence": 88
-        },
-        {
-            "device": "LED Television",
-            "watts": 120,
-            "efficiency": "High",
-            "confidence": 91
-        },
-        {
-            "device": "Refrigerator",
-            "watts": 150,
-            "efficiency": "Medium",
-            "confidence": 93
-        },
-        {
-            "device": "Washing Machine",
-            "watts": 500,
-            "efficiency": "Medium",
-            "confidence": 89
-        }
-    ]
-
-    result = random.choice(device_types)
-
-    return jsonify({
-        "success": True,
-        "detected_device": result["device"],
-        "estimated_watts": result["watts"],
-        "efficiency": result["efficiency"],
-        "confidence": result["confidence"],
-        "daily_hours": random.randint(2, 10)
-    })
-
-# =========================================
-# SEND ALERTS
-# =========================================
-
-@app.route("/send-alert", methods=["POST"])
-def send_alert():
-
     data = request.json
 
-    email = data.get("email")
-    device = data.get("device")
+    filename = data.get("filename", "").lower()
+
+    detected = "Unknown Appliance"
+    estimated_power = 100
+
+    if "fridge" in filename:
+        detected = "Refrigerator"
+        estimated_power = 150
+
+    elif "tv" in filename:
+        detected = "Television"
+        estimated_power = 120
+
+    elif "ac" in filename:
+        detected = "Air Conditioner"
+        estimated_power = 1500
+
+    elif "oven" in filename:
+        detected = "Electric Oven"
+        estimated_power = 2000
 
     return jsonify({
-        "success": True,
-        "message": f"Alert sent to {email} about {device}"
+        "detected_appliance": detected,
+        "estimated_power": estimated_power,
+        "confidence": "95%"
     })
 
-# =========================================
-# FEEDBACK LEARNING
-# =========================================
+# =========================
+# FEEDBACK
+# =========================
 
 @app.route("/feedback", methods=["POST"])
 def feedback():
 
     data = request.json
 
-    user_id = data.get("user_id")
-    real_bill = float(data.get("real_bill", 0))
+    return jsonify({
+        "success": True,
+        "message": "Feedback received",
+        "data": data
+    })
 
-    if user_id not in users:
-        return jsonify({
-            "error": "User not found"
-        }), 404
+# =========================
+# EMAIL ALERT
+# =========================
 
-    users[user_id]["factor"] = real_bill
+@app.route("/send-alert", methods=["POST"])
+def send_alert():
+
+    data = request.json
 
     return jsonify({
         "success": True,
-        "message": "Feedback saved"
+        "message": f"Alert prepared for {data.get('email')}"
     })
 
-# =========================================
-# RUN SERVER
-# =========================================
+# =========================
+# AI FUNCTIONS
+# =========================
+
+def get_ai_insight(monthly_bill):
+
+    if monthly_bill > 100:
+        return "⚠ High energy usage detected"
+
+    elif monthly_bill > 50:
+        return "📈 Moderate usage"
+
+    return "💡 Efficient energy usage"
+
+def get_recommendation(power):
+
+    if power > 2000:
+        return "Turn off unused heavy appliances."
+
+    elif power > 1000:
+        return "Try reducing AC usage."
+
+    return "Your usage looks healthy."
+
+# =========================
+# START
+# =========================
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
