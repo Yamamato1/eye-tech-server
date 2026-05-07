@@ -5,27 +5,41 @@ from datetime import datetime
 app = Flask(__name__)
 CORS(app)
 
+# =========================
+# MEMORY STORAGE
+# =========================
 user_data = {}
 
+# =========================
+# DEVICE POWER (Watts)
+# =========================
 DEVICE_POWER = {
-    "lights": 10,
-    "tv": 100,
-    "washing_machine": 500,
+    "lights": 60,
+    "tv": 120,
+    "washing_machine": 800,
     "fridge": 150,
     "oven": 2000,
     "ac": 1500
 }
 
-# ---------------- HOME ----------------
+# =========================
+# HOME PAGE
+# =========================
 @app.route('/')
 def home():
     return render_template("index.html")
 
-# ---------------- SURVEY ----------------
+# =========================
+# SAVE SURVEY
+# =========================
 @app.route('/survey', methods=['POST'])
 def save_survey():
+
     data = request.json
     user_id = data.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
 
     user_data[user_id] = {
         "survey": data,
@@ -34,112 +48,133 @@ def save_survey():
         "factor": 1
     }
 
-    return jsonify({"status": "saved"})
+    return jsonify({
+        "status": "saved",
+        "user_id": user_id
+    })
 
-# ---------------- TRACK ----------------
+# =========================
+# TRACK DEVICE ON/OFF
+# =========================
 @app.route('/track', methods=['POST'])
 def track():
+
     data = request.json
+
     user_id = data.get("user_id")
     device = data.get("device")
     action = data.get("action")
 
-    user = user_data[user_id]
+    user = user_data.get(user_id)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
     now = datetime.now()
 
+    # DEVICE ON
     if action == "on":
         user["active_devices"][device] = now
 
+    # DEVICE OFF
     elif action == "off":
+
         start = user["active_devices"].get(device)
 
         if start:
+
             duration = (now - start).total_seconds() / 3600
 
             user["history"].append({
                 "device": device,
-                "duration_hours": round(duration, 2),
-                "start_time": start.strftime("%Y-%m-%d %H:%M:%S"),
-                "date": start.strftime("%Y-%m-%d"),
-                "day": start.strftime("%A")
+                "duration": duration,
+                "start": start.strftime("%Y-%m-%d %H:%M:%S"),
+                "end": now.strftime("%Y-%m-%d %H:%M:%S")
             })
 
             del user["active_devices"][device]
 
     return jsonify({"status": "tracked"})
 
-# ---------------- ENERGY ----------------
+# =========================
+# CALCULATE ENERGY
+# =========================
 def calculate_energy(user):
-    s = user["survey"]
-    total = 0
 
-    total += (s.get("lights_count",5)*10*5)/1000
-    total += (s.get("tv_hours",2)*100)/1000
-    total += (s.get("fridge_count",1)*150*24)/1000
-    total += (s.get("washing_per_week",1)*500)/1000/7
-    total += (s.get("oven_hours",1)*2000)/1000
-    total += (s.get("ac_hours",2)*1500)/1000
+    total_kwh = 0
 
-    return total
+    for record in user["history"]:
 
-# ---------------- HABITS ----------------
-def analyze_habits(history):
-    habits = {}
+        device = record["device"]
+        duration = record["duration"]
 
-    for r in history:
-        d = r["device"]
-        hour = int(r["start_time"].split(" ")[1].split(":")[0])
+        power = DEVICE_POWER.get(device, 0)
 
-        habits.setdefault(d, {"hours": {}})
-        habits[d]["hours"][hour] = habits[d]["hours"].get(hour, 0) + 1
+        energy = (power * duration) / 1000
 
-    return habits
+        total_kwh += energy
 
-# ---------------- PEAK ----------------
+    return total_kwh * user.get("factor", 1)
+
+# =========================
+# PEAK HOUR
+# =========================
 def calculate_peak(user):
-    hourly = {}
 
-    for r in user["history"]:
-        hour = int(r["start_time"].split(" ")[1].split(":")[0])
-        power = DEVICE_POWER.get(r["device"],0)
-        energy = power * r["duration_hours"] / 1000
+    hours = {}
 
-        hourly[hour] = hourly.get(hour,0) + energy
+    for record in user["history"]:
 
-    return max(hourly, key=hourly.get) if hourly else None
+        hour = int(record["start"].split(" ")[1].split(":")[0])
 
-# ---------------- WEEKLY ----------------
+        hours[hour] = hours.get(hour, 0) + 1
+
+    if not hours:
+        return None
+
+    return max(hours, key=hours.get)
+
+# =========================
+# WEEKLY DATA
+# =========================
 def weekly(user):
-    d = {}
 
-    for r in user["history"]:
-        date = r["date"]
-        power = DEVICE_POWER.get(r["device"],0)
-        energy = power * r["duration_hours"] / 1000
+    data = {}
 
-        d[date] = d.get(date,0) + energy
+    for record in user["history"]:
 
-    return d
+        date = record["start"].split(" ")[0]
 
-# ---------------- SAVINGS ----------------
+        device = record["device"]
+
+        power = DEVICE_POWER.get(device, 0)
+
+        energy = (power * record["duration"]) / 1000
+
+        data[date] = round(data.get(date, 0) + energy, 2)
+
+    return data
+
+# =========================
+# SAVINGS
+# =========================
 def calculate_savings(user):
-    s = user["survey"]
-    price = s.get("price_per_kwh", 0.1)
 
     current = calculate_energy(user)
-    optimized = current
 
-    if s.get("ac_hours",0) > 0:
-        optimized -= 1.5
+    optimized = current * 0.85
 
-    if s.get("oven_hours",0) > 0:
-        optimized -= 1
+    price = user["survey"].get("price_per_kwh", 0.1)
 
-    return round((current-optimized)*30*price,2)
+    return round((current - optimized) * 30 * price, 2)
 
-# ---------------- INSIGHTS ----------------
+# =========================
+# INSIGHTS
+# =========================
 def insights(user):
+
     kwh = calculate_energy(user)
+
     ins = []
 
     if kwh > 10:
@@ -147,14 +182,16 @@ def insights(user):
     else:
         ins.append("💡 Efficient usage")
 
-    ins.append(f"📊 Monthly: {round(kwh*30,1)} kWh")
+    ins.append(f"📊 Monthly: {round(kwh * 30, 1)} kWh")
 
     return ins
 
-# ---------------- MAIN ----------------
-# ---------------- LIVE DATA ----------------
+# =========================
+# LIVE DATA
+# =========================
 @app.route('/live/<user_id>')
 def live(user_id):
+
     user = user_data.get(user_id)
 
     if not user:
@@ -162,11 +199,14 @@ def live(user_id):
 
     total_power = 0
 
-    for d in user["active_devices"]:
-        power = DEVICE_POWER.get(d, 0)
+    for device in user["active_devices"]:
+
+        power = DEVICE_POWER.get(device, 0)
+
         total_power += power
 
     voltage = 230
+
     current = total_power / voltage if voltage > 0 else 0
 
     return jsonify({
@@ -174,6 +214,60 @@ def live(user_id):
         "current": round(current, 2),
         "power": round(total_power, 2)
     })
-    
+
+# =========================
+# MAIN DASHBOARD DATA
+# =========================
+@app.route('/latest/<user_id>')
+def latest(user_id):
+
+    user = user_data.get(user_id)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    kwh = calculate_energy(user)
+
+    price = user["survey"].get("price_per_kwh", 0.1)
+
+    return jsonify({
+        "daily_kwh": round(kwh, 2),
+        "monthly_kwh": round(kwh * 30, 2),
+        "monthly_cost": round(kwh * 30 * price, 2),
+        "peak_hour": calculate_peak(user),
+        "weekly": weekly(user),
+        "savings": calculate_savings(user),
+        "insights": insights(user)
+    })
+
+# =========================
+# FEEDBACK / LEARNING
+# =========================
+@app.route('/feedback', methods=['POST'])
+def feedback():
+
+    data = request.json
+
+    user_id = data.get("user_id")
+
+    real_kwh = data.get("real_kwh")
+
+    user = user_data.get(user_id)
+
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    predicted = calculate_energy(user)
+
+    if predicted > 0:
+        user["factor"] = real_kwh / predicted
+
+    return jsonify({
+        "factor": round(user["factor"], 2)
+    })
+
+# =========================
+# START SERVER
+# =========================
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host="0.0.0.0", port=5000)
