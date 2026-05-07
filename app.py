@@ -1,30 +1,88 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from datetime import datetime
+import boto3
 
 app = Flask(__name__)
 CORS(app)
 
 # =========================================
+# AWS REKOGNITION
+# =========================================
+
+rekognition = boto3.client(
+    'rekognition',
+    aws_access_key_id='YOUR_ACCESS_KEY',
+    aws_secret_access_key='YOUR_SECRET_KEY',
+    region_name='us-east-1'
+)
+
+# =========================================
 # MEMORY STORAGE
 # =========================================
+
 user_data = {}
 
 # =========================================
-# DEVICE DATABASE (Watts)
+# DEVICE POWER
 # =========================================
+
 DEVICE_POWER = {
     "lights": 60,
     "tv": 120,
-    "washing_machine": 800,
+    "washing_machine": 500,
     "fridge": 150,
     "oven": 2000,
     "ac": 1500
 }
 
 # =========================================
+# APPLIANCE DATABASE
+# =========================================
+
+APPLIANCE_DATABASE = {
+
+    "washing machine": {
+        "avg_watts": 500,
+        "monthly_kwh": 24,
+        "efficiency": "A+",
+        "usage_type": "weekly"
+    },
+
+    "refrigerator": {
+        "avg_watts": 150,
+        "monthly_kwh": 45,
+        "efficiency": "A++",
+        "usage_type": "always_on"
+    },
+
+    "television": {
+        "avg_watts": 120,
+        "monthly_kwh": 18,
+        "efficiency": "A",
+        "usage_type": "daily"
+    },
+
+    "air conditioner": {
+        "avg_watts": 1500,
+        "monthly_kwh": 220,
+        "efficiency": "B",
+        "usage_type": "heavy"
+    },
+
+    "oven": {
+        "avg_watts": 2000,
+        "monthly_kwh": 40,
+        "efficiency": "A",
+        "usage_type": "short_usage"
+    }
+
+}
+
+# =========================================
 # HOME
 # =========================================
+
 @app.route('/')
 def home():
     return render_template("index.html")
@@ -32,6 +90,7 @@ def home():
 # =========================================
 # SAVE SURVEY
 # =========================================
+
 @app.route('/survey', methods=['POST'])
 def save_survey():
 
@@ -46,17 +105,18 @@ def save_survey():
         "survey": data,
         "active_devices": {},
         "history": [],
-        "factor": 1
+        "factor": 1,
+        "appliances": []
     }
 
     return jsonify({
-        "status": "saved",
-        "user_id": user_id
+        "status": "saved"
     })
 
 # =========================================
-# TRACK DEVICES
+# TRACK DEVICE
 # =========================================
+
 @app.route('/track', methods=['POST'])
 def track():
 
@@ -73,11 +133,9 @@ def track():
 
     now = datetime.now()
 
-    # TURN ON
     if action == "on":
         user["active_devices"][device] = now
 
-    # TURN OFF
     elif action == "off":
 
         start = user["active_devices"].get(device)
@@ -100,8 +158,9 @@ def track():
     })
 
 # =========================================
-# CALCULATE ENERGY
+# ENERGY CALCULATION
 # =========================================
+
 def calculate_energy(user):
 
     total_kwh = 0
@@ -109,6 +168,7 @@ def calculate_energy(user):
     for record in user["history"]:
 
         device = record["device"]
+
         duration = record["duration"]
 
         power = DEVICE_POWER.get(device, 0)
@@ -122,6 +182,7 @@ def calculate_energy(user):
 # =========================================
 # PEAK HOUR
 # =========================================
+
 def calculate_peak(user):
 
     hours = {}
@@ -138,8 +199,9 @@ def calculate_peak(user):
     return max(hours, key=hours.get)
 
 # =========================================
-# WEEKLY HISTORY
+# WEEKLY
 # =========================================
+
 def weekly(user):
 
     data = {}
@@ -159,8 +221,9 @@ def weekly(user):
     return data
 
 # =========================================
-# SAVINGS ESTIMATION
+# SAVINGS
 # =========================================
+
 def calculate_savings(user):
 
     current = calculate_energy(user)
@@ -172,8 +235,9 @@ def calculate_savings(user):
     return round((current - optimized) * 30 * price, 2)
 
 # =========================================
-# AI INSIGHTS
+# INSIGHTS
 # =========================================
+
 def insights(user):
 
     kwh = calculate_energy(user)
@@ -192,6 +256,7 @@ def insights(user):
 # =========================================
 # LIVE DATA
 # =========================================
+
 @app.route('/live/<user_id>')
 def live(user_id):
 
@@ -219,8 +284,9 @@ def live(user_id):
     })
 
 # =========================================
-# MAIN DASHBOARD
+# DASHBOARD
 # =========================================
+
 @app.route('/latest/<user_id>')
 def latest(user_id):
 
@@ -240,18 +306,21 @@ def latest(user_id):
         "peak_hour": calculate_peak(user),
         "weekly": weekly(user),
         "savings": calculate_savings(user),
-        "insights": insights(user)
+        "insights": insights(user),
+        "appliances": user["appliances"]
     })
 
 # =========================================
-# FEEDBACK / LEARNING
+# FEEDBACK
 # =========================================
+
 @app.route('/feedback', methods=['POST'])
 def feedback():
 
     data = request.json
 
     user_id = data.get("user_id")
+
     real_kwh = data.get("real_kwh")
 
     user = user_data.get(user_id)
@@ -269,8 +338,9 @@ def feedback():
     })
 
 # =========================================
-# AI CHAT ASSISTANT
+# AI CHAT
 # =========================================
+
 @app.route('/ai-chat', methods=['POST'])
 def ai_chat():
 
@@ -281,10 +351,10 @@ def ai_chat():
     reply = f"""
 EyeTech AI Analysis:
 
-Based on your appliance behavior and estimated energy profile,
-reducing AC usage during afternoon peak hours may reduce your bill.
+Based on your estimated appliance behavior and household profile,
+reducing AC usage during peak afternoon hours may reduce your monthly bill.
 
-Your estimated household energy usage is currently within a normal range.
+Your current estimated energy profile appears normal.
 """
 
     return jsonify({
@@ -292,20 +362,78 @@ Your estimated household energy usage is currently within a normal range.
     })
 
 # =========================================
-# APPLIANCE PHOTO ANALYSIS
+# AWS APPLIANCE DETECTION
 # =========================================
-@app.route('/upload-appliance', methods=['POST'])
-def upload_appliance():
+
+@app.route('/detect-appliance', methods=['POST'])
+def detect_appliance():
+
+    file = request.files['image']
+
+    image_bytes = file.read()
+
+    response = rekognition.detect_labels(
+        Image={'Bytes': image_bytes},
+        MaxLabels=10
+    )
+
+    labels = []
+
+    for label in response['Labels']:
+
+        labels.append({
+            "name": label['Name'],
+            "confidence": round(label['Confidence'], 2)
+        })
+
+    return jsonify(labels)
+
+# =========================================
+# APPLIANCE ANALYSIS
+# =========================================
+
+@app.route('/analyze-appliance', methods=['POST'])
+def analyze_appliance():
+
+    data = request.json
+
+    user_id = data.get("user_id")
+
+    appliance_name = data.get("appliance", "").lower()
+
+    result = APPLIANCE_DATABASE.get(appliance_name)
+
+    if not result:
+
+        return jsonify({
+            "status": "unknown",
+            "message": "Appliance not found"
+        })
+
+    user = user_data.get(user_id)
+
+    if user:
+
+        user["appliances"].append({
+            "name": appliance_name,
+            "avg_watts": result["avg_watts"],
+            "monthly_kwh": result["monthly_kwh"],
+            "efficiency": result["efficiency"],
+            "usage_type": result["usage_type"]
+        })
 
     return jsonify({
-        "appliance": "Air Conditioner",
-        "estimated_wattage": "1200W",
-        "efficiency": "Medium",
-        "confidence": "87%"
+        "status": "success",
+        "appliance": appliance_name,
+        "avg_watts": result["avg_watts"],
+        "monthly_kwh": result["monthly_kwh"],
+        "efficiency": result["efficiency"],
+        "usage_type": result["usage_type"]
     })
 
 # =========================================
 # START SERVER
 # =========================================
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
