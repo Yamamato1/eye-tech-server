@@ -1,10 +1,23 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from datetime import datetime
+from openai import OpenAI
 import boto3
+
+# =========================================
+# FLASK
+# =========================================
 
 app = Flask(__name__)
 CORS(app)
+
+# =========================================
+# OPENAI CLIENT
+# =========================================
+
+client = OpenAI(
+    api_key="YOUR_OPENAI_API_KEY"
+)
 
 # =========================================
 # AWS REKOGNITION
@@ -12,19 +25,19 @@ CORS(app)
 
 rekognition = boto3.client(
     'rekognition',
-    aws_access_key_id='YOUR_ACCESS_KEY',
-    aws_secret_access_key='YOUR_SECRET_KEY',
+    aws_access_key_id='YOUR_AWS_ACCESS_KEY',
+    aws_secret_access_key='YOUR_AWS_SECRET_KEY',
     region_name='us-east-1'
 )
 
 # =========================================
-# MEMORY STORAGE
+# MEMORY DATABASE
 # =========================================
 
 user_data = {}
 
 # =========================================
-# DEVICE POWER
+# DEVICE POWER DATABASE
 # =========================================
 
 DEVICE_POWER = {
@@ -85,7 +98,9 @@ APPLIANCE_DATABASE = {
 
 @app.route('/')
 def home():
-    return render_template("index.html")
+    return jsonify({
+        "message": "EyeTech AI Backend Running"
+    })
 
 # =========================================
 # SAVE SURVEY
@@ -114,7 +129,7 @@ def save_survey():
     })
 
 # =========================================
-# TRACK DEVICE
+# TRACK DEVICES
 # =========================================
 
 @app.route('/track', methods=['POST'])
@@ -134,6 +149,7 @@ def track():
     now = datetime.now()
 
     if action == "on":
+
         user["active_devices"][device] = now
 
     elif action == "off":
@@ -158,7 +174,7 @@ def track():
     })
 
 # =========================================
-# ENERGY CALCULATION
+# ENERGY CALCULATIONS
 # =========================================
 
 def calculate_energy(user):
@@ -199,7 +215,7 @@ def calculate_peak(user):
     return max(hours, key=hours.get)
 
 # =========================================
-# WEEKLY
+# WEEKLY HISTORY
 # =========================================
 
 def weekly(user):
@@ -311,7 +327,7 @@ def latest(user_id):
     })
 
 # =========================================
-# FEEDBACK
+# FEEDBACK SYSTEM
 # =========================================
 
 @app.route('/feedback', methods=['POST'])
@@ -338,31 +354,121 @@ def feedback():
     })
 
 # =========================================
-# AI CHAT
+# REAL OPENAI AI CHAT
 # =========================================
 
 @app.route('/ai-chat', methods=['POST'])
 def ai_chat():
 
-    data = request.json
+    try:
 
-    message = data.get("message")
+        data = request.json
 
-    reply = f"""
-EyeTech AI Analysis:
+        user_id = data.get("user_id")
 
-Based on your estimated appliance behavior and household profile,
-reducing AC usage during peak afternoon hours may reduce your monthly bill.
+        message = data.get("message")
 
-Your current estimated energy profile appears normal.
-"""
+        user = user_data.get(user_id)
 
-    return jsonify({
-        "reply": reply
-    })
+        if not user:
+
+            return jsonify({
+                "reply": "User profile not found."
+            })
+
+        total_kwh = calculate_energy(user)
+
+        monthly_kwh = round(total_kwh * 30, 2)
+
+        survey = user.get("survey", {})
+
+        appliances = user.get("appliances", [])
+
+        active_devices = list(user.get("active_devices", {}).keys())
+
+        appliance_text = ""
+
+        for appliance in appliances:
+
+            appliance_text += f"""
+
+            Appliance:
+            {appliance.get('name')}
+
+            Estimated Watts:
+            {appliance.get('avg_watts')}
+
+            Monthly kWh:
+            {appliance.get('monthly_kwh')}
+
+            Efficiency:
+            {appliance.get('efficiency')}
+
+            """
+
+        response = client.chat.completions.create(
+
+            model="gpt-4.1-mini",
+
+            messages=[
+
+                {
+                    "role": "system",
+                    "content": f"""
+
+                    You are EyeTech AI,
+                    an intelligent smart-home energy assistant.
+
+                    Help users:
+                    - reduce electricity bills
+                    - analyze appliance usage
+                    - estimate realistic energy usage
+                    - optimize home energy
+                    - explain appliance efficiency
+
+                    USER DATA:
+
+                    Estimated Daily kWh:
+                    {round(total_kwh, 2)}
+
+                    Estimated Monthly kWh:
+                    {monthly_kwh}
+
+                    Active Devices:
+                    {active_devices}
+
+                    Survey:
+                    {survey}
+
+                    Appliances:
+                    {appliance_text}
+
+                    """
+                },
+
+                {
+                    "role": "user",
+                    "content": message
+                }
+
+            ]
+
+        )
+
+        reply = response.choices[0].message.content
+
+        return jsonify({
+            "reply": reply
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "reply": f"AI Error: {str(e)}"
+        })
 
 # =========================================
-# AWS APPLIANCE DETECTION
+# AWS IMAGE DETECTION
 # =========================================
 
 @app.route('/detect-appliance', methods=['POST'])
