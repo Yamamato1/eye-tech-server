@@ -1,33 +1,46 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
 from openai import OpenAI
 import boto3
+import os
 
 # =========================================
-# FLASK
+# FLASK SETUP
 # =========================================
 
 app = Flask(__name__)
 CORS(app)
 
 # =========================================
+# ENV VARIABLES
+# =========================================
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+
+# =========================================
 # OPENAI CLIENT
 # =========================================
 
 client = OpenAI(
-    api_key="YOUR_OPENAI_API_KEY"
+    api_key=OPENAI_API_KEY
 )
 
 # =========================================
-# AWS REKOGNITION
+# AWS REKOGNITION CLIENT
 # =========================================
 
 rekognition = boto3.client(
-    'rekognition',
-    aws_access_key_id='YOUR_AWS_ACCESS_KEY',
-    aws_secret_access_key='YOUR_AWS_SECRET_KEY',
-    region_name='us-east-1'
+    "rekognition",
+    aws_access_key_id=AWS_ACCESS_KEY_ID,
+    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+    region_name=AWS_REGION
 )
 
 # =========================================
@@ -96,17 +109,35 @@ APPLIANCE_DATABASE = {
 # HOME
 # =========================================
 
-@app.route('/')
+@app.route("/")
 def home():
     return jsonify({
         "message": "EyeTech AI Backend Running"
     })
 
 # =========================================
+# AUTO CREATE USER
+# =========================================
+
+def ensure_user(user_id):
+
+    if user_id not in user_data:
+
+        user_data[user_id] = {
+            "survey": {
+                "price_per_kwh": 0.15
+            },
+            "active_devices": {},
+            "history": [],
+            "factor": 1,
+            "appliances": []
+        }
+
+# =========================================
 # SAVE SURVEY
 # =========================================
 
-@app.route('/survey', methods=['POST'])
+@app.route("/survey", methods=["POST"])
 def save_survey():
 
     data = request.json
@@ -116,23 +147,19 @@ def save_survey():
     if not user_id:
         return jsonify({"error": "Missing user_id"}), 400
 
-    user_data[user_id] = {
-        "survey": data,
-        "active_devices": {},
-        "history": [],
-        "factor": 1,
-        "appliances": []
-    }
+    ensure_user(user_id)
+
+    user_data[user_id]["survey"] = data
 
     return jsonify({
         "status": "saved"
     })
 
 # =========================================
-# TRACK DEVICES
+# TRACK DEVICE
 # =========================================
 
-@app.route('/track', methods=['POST'])
+@app.route("/track", methods=["POST"])
 def track():
 
     data = request.json
@@ -141,10 +168,9 @@ def track():
     device = data.get("device")
     action = data.get("action")
 
-    user = user_data.get(user_id)
+    ensure_user(user_id)
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    user = user_data[user_id]
 
     now = datetime.now()
 
@@ -174,7 +200,7 @@ def track():
     })
 
 # =========================================
-# ENERGY CALCULATIONS
+# ENERGY CALCULATION
 # =========================================
 
 def calculate_energy(user):
@@ -215,7 +241,7 @@ def calculate_peak(user):
     return max(hours, key=hours.get)
 
 # =========================================
-# WEEKLY HISTORY
+# WEEKLY DATA
 # =========================================
 
 def weekly(user):
@@ -273,13 +299,12 @@ def insights(user):
 # LIVE DATA
 # =========================================
 
-@app.route('/live/<user_id>')
+@app.route("/live/<user_id>")
 def live(user_id):
 
-    user = user_data.get(user_id)
+    ensure_user(user_id)
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    user = user_data[user_id]
 
     total_power = 0
 
@@ -303,13 +328,12 @@ def live(user_id):
 # DASHBOARD
 # =========================================
 
-@app.route('/latest/<user_id>')
+@app.route("/latest/<user_id>")
 def latest(user_id):
 
-    user = user_data.get(user_id)
+    ensure_user(user_id)
 
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    user = user_data[user_id]
 
     kwh = calculate_energy(user)
 
@@ -327,37 +351,10 @@ def latest(user_id):
     })
 
 # =========================================
-# FEEDBACK SYSTEM
+# AI CHAT
 # =========================================
 
-@app.route('/feedback', methods=['POST'])
-def feedback():
-
-    data = request.json
-
-    user_id = data.get("user_id")
-
-    real_kwh = data.get("real_kwh")
-
-    user = user_data.get(user_id)
-
-    if not user:
-        return jsonify({"error": "User not found"}), 404
-
-    predicted = calculate_energy(user)
-
-    if predicted > 0:
-        user["factor"] = real_kwh / predicted
-
-    return jsonify({
-        "factor": round(user["factor"], 2)
-    })
-
-# =========================================
-# REAL OPENAI AI CHAT
-# =========================================
-
-@app.route('/ai-chat', methods=['POST'])
+@app.route("/ai-chat", methods=["POST"])
 def ai_chat():
 
     try:
@@ -365,46 +362,15 @@ def ai_chat():
         data = request.json
 
         user_id = data.get("user_id")
-
         message = data.get("message")
 
-        user = user_data.get(user_id)
+        ensure_user(user_id)
 
-        if not user:
-
-            return jsonify({
-                "reply": "User profile not found."
-            })
+        user = user_data[user_id]
 
         total_kwh = calculate_energy(user)
 
         monthly_kwh = round(total_kwh * 30, 2)
-
-        survey = user.get("survey", {})
-
-        appliances = user.get("appliances", [])
-
-        active_devices = list(user.get("active_devices", {}).keys())
-
-        appliance_text = ""
-
-        for appliance in appliances:
-
-            appliance_text += f"""
-
-            Appliance:
-            {appliance.get('name')}
-
-            Estimated Watts:
-            {appliance.get('avg_watts')}
-
-            Monthly kWh:
-            {appliance.get('monthly_kwh')}
-
-            Efficiency:
-            {appliance.get('efficiency')}
-
-            """
 
         response = client.chat.completions.create(
 
@@ -415,34 +381,18 @@ def ai_chat():
                 {
                     "role": "system",
                     "content": f"""
-
-                    You are EyeTech AI,
-                    an intelligent smart-home energy assistant.
+                    You are EyeTech AI.
 
                     Help users:
                     - reduce electricity bills
-                    - analyze appliance usage
-                    - estimate realistic energy usage
-                    - optimize home energy
-                    - explain appliance efficiency
-
-                    USER DATA:
+                    - optimize appliance usage
+                    - improve energy efficiency
 
                     Estimated Daily kWh:
                     {round(total_kwh, 2)}
 
                     Estimated Monthly kWh:
                     {monthly_kwh}
-
-                    Active Devices:
-                    {active_devices}
-
-                    Survey:
-                    {survey}
-
-                    Appliances:
-                    {appliance_text}
-
                     """
                 },
 
@@ -468,44 +418,53 @@ def ai_chat():
         })
 
 # =========================================
-# AWS IMAGE DETECTION
+# DETECT APPLIANCE
 # =========================================
 
-@app.route('/detect-appliance', methods=['POST'])
+@app.route("/detect-appliance", methods=["POST"])
 def detect_appliance():
 
-    file = request.files['image']
+    try:
 
-    image_bytes = file.read()
+        file = request.files["image"]
 
-    response = rekognition.detect_labels(
-        Image={'Bytes': image_bytes},
-        MaxLabels=10
-    )
+        image_bytes = file.read()
 
-    labels = []
+        response = rekognition.detect_labels(
+            Image={"Bytes": image_bytes},
+            MaxLabels=10
+        )
 
-    for label in response['Labels']:
+        labels = []
 
-        labels.append({
-            "name": label['Name'],
-            "confidence": round(label['Confidence'], 2)
+        for label in response["Labels"]:
+
+            labels.append({
+                "name": label["Name"],
+                "confidence": round(label["Confidence"], 2)
+            })
+
+        return jsonify(labels)
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
         })
 
-    return jsonify(labels)
-
 # =========================================
-# APPLIANCE ANALYSIS
+# ANALYZE APPLIANCE
 # =========================================
 
-@app.route('/analyze-appliance', methods=['POST'])
+@app.route("/analyze-appliance", methods=["POST"])
 def analyze_appliance():
 
     data = request.json
 
     user_id = data.get("user_id")
-
     appliance_name = data.get("appliance", "").lower()
+
+    ensure_user(user_id)
 
     result = APPLIANCE_DATABASE.get(appliance_name)
 
@@ -516,17 +475,13 @@ def analyze_appliance():
             "message": "Appliance not found"
         })
 
-    user = user_data.get(user_id)
-
-    if user:
-
-        user["appliances"].append({
-            "name": appliance_name,
-            "avg_watts": result["avg_watts"],
-            "monthly_kwh": result["monthly_kwh"],
-            "efficiency": result["efficiency"],
-            "usage_type": result["usage_type"]
-        })
+    user_data[user_id]["appliances"].append({
+        "name": appliance_name,
+        "avg_watts": result["avg_watts"],
+        "monthly_kwh": result["monthly_kwh"],
+        "efficiency": result["efficiency"],
+        "usage_type": result["usage_type"]
+    })
 
     return jsonify({
         "status": "success",
