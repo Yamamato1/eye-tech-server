@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
 from openai import OpenAI
-import boto3
+from datetime import datetime
 import os
+import base64
+import uuid
 
 # =========================================
 # FLASK SETUP
@@ -13,97 +16,96 @@ app = Flask(__name__)
 CORS(app)
 
 # =========================================
-# ENV VARIABLES
+# DATABASE
 # =========================================
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-AWS_REGION = os.getenv("AWS_REGION", "us-east-1")
+db = SQLAlchemy(app)
 
 # =========================================
-# OPENAI CLIENT
+# OPENAI
 # =========================================
 
 client = OpenAI(
-    api_key=OPENAI_API_KEY
+    api_key=os.getenv("OPENAI_API_KEY")
 )
 
 # =========================================
-# AWS REKOGNITION CLIENT
+# MODELS
 # =========================================
 
-rekognition = boto3.client(
-    "rekognition",
-    aws_access_key_id=AWS_ACCESS_KEY_ID,
-    aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-    region_name=AWS_REGION
-)
+class User(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(db.String(100))
+
+    email = db.Column(db.String(120), unique=True)
+
+    password = db.Column(db.String(200))
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Device(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer, db.ForeignKey("user.id"))
+
+    name = db.Column(db.String(100))
+
+    brand = db.Column(db.String(100))
+
+    model = db.Column(db.String(100))
+
+    category = db.Column(db.String(100))
+
+    watts = db.Column(db.Float)
+
+    efficiency = db.Column(db.String(50))
+
+    monthly_kwh = db.Column(db.Float)
+
+    monthly_cost = db.Column(db.Float)
+
+    image_url = db.Column(db.Text)
+
+    status = db.Column(db.String(20), default="off")
+
+    total_hours = db.Column(db.Float, default=0)
+
+    started_at = db.Column(db.DateTime)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class UsageHistory(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    user_id = db.Column(db.Integer)
+
+    device_id = db.Column(db.Integer)
+
+    started_at = db.Column(db.DateTime)
+
+    ended_at = db.Column(db.DateTime)
+
+    duration_hours = db.Column(db.Float)
+
+    energy_kwh = db.Column(db.Float)
+
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 # =========================================
-# MEMORY DATABASE
+# CREATE DATABASE
 # =========================================
 
-user_data = {}
-
-# =========================================
-# DEVICE POWER DATABASE
-# =========================================
-
-DEVICE_POWER = {
-    "lights": 60,
-    "tv": 120,
-    "washing_machine": 500,
-    "fridge": 150,
-    "oven": 2000,
-    "ac": 1500
-}
-
-# =========================================
-# APPLIANCE DATABASE
-# =========================================
-
-APPLIANCE_DATABASE = {
-
-    "washing machine": {
-        "avg_watts": 500,
-        "monthly_kwh": 24,
-        "efficiency": "A+",
-        "usage_type": "weekly"
-    },
-
-    "refrigerator": {
-        "avg_watts": 150,
-        "monthly_kwh": 45,
-        "efficiency": "A++",
-        "usage_type": "always_on"
-    },
-
-    "television": {
-        "avg_watts": 120,
-        "monthly_kwh": 18,
-        "efficiency": "A",
-        "usage_type": "daily"
-    },
-
-    "air conditioner": {
-        "avg_watts": 1500,
-        "monthly_kwh": 220,
-        "efficiency": "B",
-        "usage_type": "heavy"
-    },
-
-    "oven": {
-        "avg_watts": 2000,
-        "monthly_kwh": 40,
-        "efficiency": "A",
-        "usage_type": "short_usage"
-    }
-
-}
+with app.app_context():
+    db.create_all()
 
 # =========================================
 # HOME
@@ -111,288 +113,127 @@ APPLIANCE_DATABASE = {
 
 @app.route("/")
 def home():
+
     return jsonify({
-        "message": "EyeTech AI Backend Running"
+        "message": "EyeTech Pro Backend Running"
     })
 
 # =========================================
-# AUTO CREATE USER
+# SIGNUP
 # =========================================
 
-def ensure_user(user_id):
+@app.route("/signup", methods=["POST"])
+def signup():
 
-    if user_id not in user_data:
+    data = request.get_json()
 
-        user_data[user_id] = {
-            "survey": {
-                "price_per_kwh": 0.15
-            },
-            "active_devices": {},
-            "history": [],
-            "factor": 1,
-            "appliances": []
-        }
+    name = data.get("name")
+    email = data.get("email")
+    password = data.get("password")
 
-# =========================================
-# SAVE SURVEY
-# =========================================
+    existing = User.query.filter_by(email=email).first()
 
-@app.route("/survey", methods=["POST"])
-def save_survey():
+    if existing:
+        return jsonify({
+            "error": "Email already exists"
+        }), 400
 
-    data = request.json
+    hashed = generate_password_hash(password)
 
-    user_id = data.get("user_id")
+    user = User(
+        name=name,
+        email=email,
+        password=hashed
+    )
 
-    if not user_id:
-        return jsonify({"error": "Missing user_id"}), 400
-
-    ensure_user(user_id)
-
-    user_data[user_id]["survey"] = data
+    db.session.add(user)
+    db.session.commit()
 
     return jsonify({
-        "status": "saved"
+        "message": f"{name}, account created successfully"
     })
 
 # =========================================
-# TRACK DEVICE
+# LOGIN
 # =========================================
 
-@app.route("/track", methods=["POST"])
-def track():
+@app.route("/login", methods=["POST"])
+def login():
 
-    data = request.json
+    data = request.get_json()
 
-    user_id = data.get("user_id")
-    device = data.get("device")
-    action = data.get("action")
+    email = data.get("email")
+    password = data.get("password")
 
-    ensure_user(user_id)
+    user = User.query.filter_by(email=email).first()
 
-    user = user_data[user_id]
+    if not user:
+        return jsonify({
+            "error": "User not found"
+        }), 404
 
-    now = datetime.now()
+    if not check_password_hash(user.password, password):
 
-    if action == "on":
-
-        user["active_devices"][device] = now
-
-    elif action == "off":
-
-        start = user["active_devices"].get(device)
-
-        if start:
-
-            duration = (now - start).total_seconds() / 3600
-
-            user["history"].append({
-                "device": device,
-                "duration": duration,
-                "start": start.strftime("%Y-%m-%d %H:%M:%S"),
-                "end": now.strftime("%Y-%m-%d %H:%M:%S")
-            })
-
-            del user["active_devices"][device]
+        return jsonify({
+            "error": "Incorrect password"
+        }), 401
 
     return jsonify({
-        "status": "tracked"
-    })
-
-# =========================================
-# ENERGY CALCULATION
-# =========================================
-
-def calculate_energy(user):
-
-    total_kwh = 0
-
-    for record in user["history"]:
-
-        device = record["device"]
-
-        duration = record["duration"]
-
-        power = DEVICE_POWER.get(device, 0)
-
-        energy = (power * duration) / 1000
-
-        total_kwh += energy
-
-    return total_kwh * user.get("factor", 1)
-
-# =========================================
-# PEAK HOUR
-# =========================================
-
-def calculate_peak(user):
-
-    hours = {}
-
-    for record in user["history"]:
-
-        hour = int(record["start"].split(" ")[1].split(":")[0])
-
-        hours[hour] = hours.get(hour, 0) + 1
-
-    if not hours:
-        return None
-
-    return max(hours, key=hours.get)
-
-# =========================================
-# WEEKLY DATA
-# =========================================
-
-def weekly(user):
-
-    data = {}
-
-    for record in user["history"]:
-
-        date = record["start"].split(" ")[0]
-
-        device = record["device"]
-
-        power = DEVICE_POWER.get(device, 0)
-
-        energy = (power * record["duration"]) / 1000
-
-        data[date] = round(data.get(date, 0) + energy, 2)
-
-    return data
-
-# =========================================
-# SAVINGS
-# =========================================
-
-def calculate_savings(user):
-
-    current = calculate_energy(user)
-
-    optimized = current * 0.85
-
-    price = user["survey"].get("price_per_kwh", 0.1)
-
-    return round((current - optimized) * 30 * price, 2)
-
-# =========================================
-# INSIGHTS
-# =========================================
-
-def insights(user):
-
-    kwh = calculate_energy(user)
-
-    ins = []
-
-    if kwh > 10:
-        ins.append("⚠️ High energy usage detected")
-    else:
-        ins.append("💡 Efficient energy usage")
-
-    ins.append(f"📊 Estimated monthly usage: {round(kwh * 30, 1)} kWh")
-
-    return ins
-
-# =========================================
-# LIVE DATA
-# =========================================
-
-@app.route("/live/<user_id>")
-def live(user_id):
-
-    ensure_user(user_id)
-
-    user = user_data[user_id]
-
-    total_power = 0
-
-    for device in user["active_devices"]:
-
-        power = DEVICE_POWER.get(device, 0)
-
-        total_power += power
-
-    voltage = 230
-
-    current = total_power / voltage if voltage > 0 else 0
-
-    return jsonify({
-        "voltage": round(voltage, 2),
-        "current": round(current, 2),
-        "power": round(total_power, 2)
-    })
-
-# =========================================
-# DASHBOARD
-# =========================================
-
-@app.route("/latest/<user_id>")
-def latest(user_id):
-
-    ensure_user(user_id)
-
-    user = user_data[user_id]
-
-    kwh = calculate_energy(user)
-
-    price = user["survey"].get("price_per_kwh", 0.1)
-
-    return jsonify({
-        "daily_kwh": round(kwh, 2),
-        "monthly_kwh": round(kwh * 30, 2),
-        "monthly_cost": round(kwh * 30 * price, 2),
-        "peak_hour": calculate_peak(user),
-        "weekly": weekly(user),
-        "savings": calculate_savings(user),
-        "insights": insights(user),
-        "appliances": user["appliances"]
+        "message": f"{user.name}, soo dhawoow 👋",
+        "user_id": user.id,
+        "name": user.name
     })
 
 # =========================================
 # AI CHAT
 # =========================================
 
-@app.route("/ai-chat", methods=["POST"])
-def ai_chat():
+@app.route("/chat", methods=["POST"])
+def chat():
 
     try:
 
-        data = request.json
+        data = request.get_json()
 
         user_id = data.get("user_id")
+
         message = data.get("message")
 
-        ensure_user(user_id)
+        user = User.query.get(user_id)
 
-        user = user_data[user_id]
+        devices = Device.query.filter_by(user_id=user_id).all()
 
-        total_kwh = calculate_energy(user)
+        device_text = ""
 
-        monthly_kwh = round(total_kwh * 30, 2)
+        for d in devices:
+
+            device_text += f"""
+            Device: {d.name}
+            Brand: {d.brand}
+            Watts: {d.watts}
+            Efficiency: {d.efficiency}
+            """
 
         response = client.chat.completions.create(
 
-            model="gpt-4.1-mini",
+            model="gpt-4o-mini",
 
             messages=[
 
                 {
                     "role": "system",
                     "content": f"""
-                    You are EyeTech AI.
+                    You are EyeTech Pro AI assistant.
 
-                    Help users:
-                    - reduce electricity bills
-                    - optimize appliance usage
-                    - improve energy efficiency
+                    User Name:
+                    {user.name}
 
-                    Estimated Daily kWh:
-                    {round(total_kwh, 2)}
+                    User Devices:
+                    {device_text}
 
-                    Estimated Monthly kWh:
-                    {monthly_kwh}
+                    Speak naturally.
+                    Use Somali greetings when appropriate.
+                    Give energy-saving advice.
                     """
                 },
 
@@ -414,87 +255,274 @@ def ai_chat():
     except Exception as e:
 
         return jsonify({
-            "reply": f"AI Error: {str(e)}"
-        })
+            "error": str(e)
+        }), 500
 
 # =========================================
-# DETECT APPLIANCE
+# PHOTO ANALYSIS
 # =========================================
 
-@app.route("/detect-appliance", methods=["POST"])
-def detect_appliance():
+@app.route("/analyze-photo", methods=["POST"])
+def analyze_photo():
 
     try:
 
-        file = request.files["image"]
+        user_id = request.form.get("user_id")
 
-        image_bytes = file.read()
+        image = request.files["image"]
 
-        response = rekognition.detect_labels(
-            Image={"Bytes": image_bytes},
-            MaxLabels=10
+        image_bytes = image.read()
+
+        image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+        response = client.chat.completions.create(
+
+            model="gpt-4o-mini",
+
+            messages=[
+
+                {
+                    "role": "system",
+                    "content": """
+                    Analyze this appliance image.
+
+                    Detect:
+                    - appliance type
+                    - brand
+                    - possible model
+                    - estimated wattage
+                    - efficiency
+                    - estimated monthly kWh
+                    - estimated monthly electricity cost
+                    - optimization tips
+                    - confidence score
+                    """
+                },
+
+                {
+                    "role": "user",
+                    "content": [
+
+                        {
+                            "type": "text",
+                            "text": "Analyze this appliance"
+                        },
+
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{image_base64}"
+                            }
+                        }
+
+                    ]
+                }
+
+            ]
+
         )
 
-        labels = []
+        result = response.choices[0].message.content
 
-        for label in response["Labels"]:
+        device = Device(
+            user_id=user_id,
+            name="Detected Appliance",
+            brand="AI Detected",
+            model="Estimated",
+            category="General",
+            watts=500,
+            efficiency="A",
+            monthly_kwh=35,
+            monthly_cost=12
+        )
 
-            labels.append({
-                "name": label["Name"],
-                "confidence": round(label["Confidence"], 2)
-            })
+        db.session.add(device)
+        db.session.commit()
 
-        return jsonify(labels)
+        return jsonify({
+            "result": result,
+            "device_id": device.id
+        })
 
     except Exception as e:
 
         return jsonify({
             "error": str(e)
-        })
+        }), 500
 
 # =========================================
-# ANALYZE APPLIANCE
+# TURN DEVICE ON/OFF
 # =========================================
 
-@app.route("/analyze-appliance", methods=["POST"])
-def analyze_appliance():
+@app.route("/device-toggle", methods=["POST"])
+def device_toggle():
 
-    data = request.json
+    data = request.get_json()
 
-    user_id = data.get("user_id")
-    appliance_name = data.get("appliance", "").lower()
+    device_id = data.get("device_id")
 
-    ensure_user(user_id)
+    status = data.get("status")
 
-    result = APPLIANCE_DATABASE.get(appliance_name)
+    device = Device.query.get(device_id)
 
-    if not result:
+    if not device:
 
         return jsonify({
-            "status": "unknown",
-            "message": "Appliance not found"
-        })
+            "error": "Device not found"
+        }), 404
 
-    user_data[user_id]["appliances"].append({
-        "name": appliance_name,
-        "avg_watts": result["avg_watts"],
-        "monthly_kwh": result["monthly_kwh"],
-        "efficiency": result["efficiency"],
-        "usage_type": result["usage_type"]
-    })
+    if status == "on":
+
+        device.status = "on"
+
+        device.started_at = datetime.utcnow()
+
+    else:
+
+        if device.started_at:
+
+            duration = (
+                datetime.utcnow() - device.started_at
+            ).total_seconds() / 3600
+
+            device.total_hours += duration
+
+            energy = (device.watts * duration) / 1000
+
+            history = UsageHistory(
+                user_id=device.user_id,
+                device_id=device.id,
+                started_at=device.started_at,
+                ended_at=datetime.utcnow(),
+                duration_hours=duration,
+                energy_kwh=energy
+            )
+
+            db.session.add(history)
+
+        device.status = "off"
+
+        device.started_at = None
+
+    db.session.commit()
 
     return jsonify({
-        "status": "success",
-        "appliance": appliance_name,
-        "avg_watts": result["avg_watts"],
-        "monthly_kwh": result["monthly_kwh"],
-        "efficiency": result["efficiency"],
-        "usage_type": result["usage_type"]
+        "message": "Device updated",
+        "status": device.status
     })
 
 # =========================================
-# START SERVER
+# DASHBOARD
+# =========================================
+
+@app.route("/dashboard/<int:user_id>")
+def dashboard(user_id):
+
+    devices = Device.query.filter_by(user_id=user_id).all()
+
+    total_power = 0
+    total_kwh = 0
+    total_cost = 0
+
+    active_devices = 0
+
+    for d in devices:
+
+        total_power += d.watts
+
+        total_kwh += d.monthly_kwh
+
+        total_cost += d.monthly_cost
+
+        if d.status == "on":
+            active_devices += 1
+
+    return jsonify({
+
+        "total_devices": len(devices),
+
+        "active_devices": active_devices,
+
+        "monthly_kwh": round(total_kwh, 2),
+
+        "estimated_bill": round(total_cost, 2),
+
+        "total_power": round(total_power, 2),
+
+        "efficiency_score": 88
+
+    })
+
+# =========================================
+# USER DEVICES
+# =========================================
+
+@app.route("/devices/<int:user_id>")
+def devices(user_id):
+
+    devices = Device.query.filter_by(user_id=user_id).all()
+
+    results = []
+
+    for d in devices:
+
+        results.append({
+
+            "id": d.id,
+
+            "name": d.name,
+
+            "brand": d.brand,
+
+            "model": d.model,
+
+            "category": d.category,
+
+            "watts": d.watts,
+
+            "efficiency": d.efficiency,
+
+            "monthly_kwh": d.monthly_kwh,
+
+            "monthly_cost": d.monthly_cost,
+
+            "status": d.status,
+
+            "total_hours": round(d.total_hours, 2)
+
+        })
+
+    return jsonify(results)
+
+# =========================================
+# DELETE DEVICE
+# =========================================
+
+@app.route("/delete-device/<int:device_id>", methods=["DELETE"])
+def delete_device(device_id):
+
+    device = Device.query.get(device_id)
+
+    if not device:
+
+        return jsonify({
+            "error": "Device not found"
+        }), 404
+
+    db.session.delete(device)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Device deleted"
+    })
+
+# =========================================
+# RUN
 # =========================================
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+
+    app.run(
+        host="0.0.0.0",
+        port=5000
+    )
