@@ -1,83 +1,356 @@
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
+from openai import OpenAI
+import resend
 import os
+import base64
+import json
+
+# =====================================================
+# APP CONFIG
+# =====================================================
 
 app = Flask(__name__)
 CORS(app)
 
-# Home Page
+# =====================================================
+# OPENAI CONFIG
+# =====================================================
+
+client = OpenAI(
+    api_key=os.getenv("OPENAI_API_KEY")
+)
+
+# =====================================================
+# RESEND CONFIG
+# =====================================================
+
+resend.api_key = os.getenv("RESEND_API_KEY")
+
+COMPANY_EMAIL = os.getenv("COMPANY_EMAIL")
+
+# =====================================================
+# HOME PAGE
+# =====================================================
+
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# Health Check
+# =====================================================
+# HEALTH CHECK
+# =====================================================
+
 @app.route("/health")
 def health():
+
     return jsonify({
         "status": "online",
         "project": "EyeTech Pro",
-        "message": "EyeTech Pro server is running"
+        "message": "AI backend operational"
     })
 
-# Waitlist API
+# =====================================================
+# WAITLIST SYSTEM
+# =====================================================
+
 @app.route("/api/waitlist", methods=["POST"])
 def waitlist():
+
     try:
+
         data = request.get_json()
 
         name = data.get("name")
-        phone = data.get("phone")
+        email = data.get("email")
+        whatsapp = data.get("whatsapp")
         feedback = data.get("feedback")
 
-        print("NEW WAITLIST USER")
-        print(name)
-        print(phone)
-        print(feedback)
+        # ============================================
+        # SEND EMAIL TO COMPANY
+        # ============================================
+
+        resend.Emails.send({
+
+            "from": "EyeTech Pro <onboarding@resend.dev>",
+
+            "to": COMPANY_EMAIL,
+
+            "subject": "New EyeTech Pro Waitlist User",
+
+            "html": f"""
+
+            <h2>New Waitlist Signup</h2>
+
+            <p><strong>Name:</strong> {name}</p>
+
+            <p><strong>Email:</strong> {email}</p>
+
+            <p><strong>WhatsApp:</strong> {whatsapp}</p>
+
+            <p><strong>Feedback:</strong></p>
+
+            <p>{feedback}</p>
+
+            """
+
+        })
+
+        # ============================================
+        # SEND CONFIRMATION EMAIL TO USER
+        # ============================================
+
+        resend.Emails.send({
+
+            "from": "EyeTech Pro <onboarding@resend.dev>",
+
+            "to": email,
+
+            "subject": "Welcome to EyeTech Pro",
+
+            "html": f"""
+
+            <div style="font-family:Arial;padding:20px;background:#0a0f1e;color:white;">
+
+                <h1 style="color:#22d3ee;">
+                    Mahadsanid {name}
+                </h1>
+
+                <p>
+                    Waad ku mahadsan tahay inaad ku biirtay EyeTech Pro.
+                </p>
+
+                <p>
+                    Waxaan dhiseynaa mustaqbalka AI-ga Soomaaliya.
+                </p>
+
+                <p>
+                    Waxaan kula soo xiriiri doonaa marka nidaamka la bilaabo.
+                </p>
+
+            </div>
+
+            """
+
+        })
 
         return jsonify({
             "success": True,
-            "message": f"Mahadsanid {name}! Waan ku helnay."
+            "message": "Waitlist success"
         })
 
     except Exception as e:
+
         return jsonify({
             "success": False,
             "error": str(e)
         }), 500
 
-# Energy Calculator API
-@app.route("/api/calculate", methods=["POST"])
-def calculate():
+# =====================================================
+# AI ASSISTANT
+# =====================================================
+
+@app.route("/api/assistant", methods=["POST"])
+def assistant():
+
     try:
+
         data = request.get_json()
 
-        appliance = data.get("appliance")
-        wattage = float(data.get("wattage", 0))
-        hours = float(data.get("hours", 0))
+        user_message = data.get("message")
 
-        price_per_kwh = 0.25
+        response = client.chat.completions.create(
 
-        daily_kwh = (wattage * hours) / 1000
-        monthly_kwh = daily_kwh * 30
-        estimated_bill = monthly_kwh * price_per_kwh
+            model="gpt-4o-mini",
+
+            messages=[
+
+                {
+                    "role": "system",
+                    "content": """
+You are EyeTech Pro AI Assistant.
+
+You help Somali users understand:
+- electricity bills
+- appliance consumption
+- energy efficiency
+- electricity savings
+
+Always answer in Somali language.
+Be helpful and intelligent.
+"""
+                },
+
+                {
+                    "role": "user",
+                    "content": user_message
+                }
+
+            ],
+
+            max_tokens=400
+        )
+
+        ai_response = response.choices[0].message.content
 
         return jsonify({
             "success": True,
-            "appliance": appliance,
-            "daily_kwh": round(daily_kwh, 2),
-            "monthly_kwh": round(monthly_kwh, 2),
-            "estimated_bill": round(estimated_bill, 2),
-            "currency": "USD",
-            "message": f"{appliance} wuxuu isticmaali doonaa qiyaastii ${round(estimated_bill,2)} bishii."
+            "response": ai_response
         })
 
     except Exception as e:
+
         return jsonify({
             "success": False,
             "error": str(e)
         }), 500
 
-# Run Server
+# =====================================================
+# AI IMAGE ANALYSIS
+# =====================================================
+
+@app.route("/api/analyze-image", methods=["POST"])
+def analyze_image():
+
+    try:
+
+        if "image" not in request.files:
+
+            return jsonify({
+                "success": False,
+                "error": "No image uploaded"
+            }), 400
+
+        file = request.files["image"]
+
+        image_bytes = file.read()
+
+        base64_image = base64.b64encode(image_bytes).decode("utf-8")
+
+        response = client.chat.completions.create(
+
+            model="gpt-4o-mini",
+
+            messages=[
+
+                {
+                    "role": "system",
+                    "content": """
+Analyze the appliance image.
+
+Return ONLY JSON.
+
+Format:
+
+{
+  "appliance": "string",
+  "wattage": number,
+  "monthly_cost": number,
+  "efficiency": "string",
+  "somali_tip": "string"
+}
+"""
+                },
+
+                {
+                    "role": "user",
+                    "content": [
+
+                        {
+                            "type": "text",
+                            "text": "Analyze this appliance image."
+                        },
+
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+
+                    ]
+                }
+
+            ],
+
+            max_tokens=300
+        )
+
+        result = response.choices[0].message.content
+
+        parsed = json.loads(result)
+
+        return jsonify(parsed)
+
+    except Exception as e:
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
+# =====================================================
+# ENERGY CALCULATOR
+# =====================================================
+
+@app.route("/api/calculate", methods=["POST"])
+def calculate():
+
+    try:
+
+        data = request.get_json()
+
+        wattage = float(data.get("wattage"))
+        hours = float(data.get("hours"))
+
+        # Somalia estimated electricity price
+        price_per_kwh = 0.35
+
+        daily_kwh = (wattage * hours) / 1000
+
+        daily_cost = daily_kwh * price_per_kwh
+
+        monthly_cost = daily_cost * 30
+
+        yearly_cost = daily_cost * 365
+
+        return jsonify({
+
+            "daily": round(daily_cost, 2),
+
+            "monthly": round(monthly_cost, 2),
+
+            "yearly": round(yearly_cost, 2)
+
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# =====================================================
+# 404
+# =====================================================
+
+@app.errorhandler(404)
+def not_found(e):
+
+    return jsonify({
+        "error": "Route not found"
+    }), 404
+
+# =====================================================
+# START SERVER
+# =====================================================
+
 if __name__ == "__main__":
+
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=True
+    )
