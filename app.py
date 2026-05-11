@@ -1,397 +1,147 @@
 from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
-from openai import OpenAI
-import resend
 import os
-import base64
-import json
-import requests
-
-# =====================================================
-# APP CONFIG
-# =====================================================
+from werkzeug.utils import secure_filename
+import google.generativeai as genai
 
 app = Flask(__name__)
-CORS(app)
 
-# =====================================================
-# OPENAI CONFIG
-# =====================================================
+# =========================
+# CONFIG
+# =========================
 
-client = OpenAI(
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+UPLOAD_FOLDER = "static/uploads"
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# =====================================================
-# RESEND CONFIG
-# =====================================================
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-resend.api_key = os.getenv("RESEND_API_KEY")
+# =========================
+# GEMINI API KEY
+# =========================
 
-COMPANY_EMAIL = "Eyetech.engineering2026@gmail.com"
+GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
 
-# =====================================================
-# HOME PAGE
-# =====================================================
+genai.configure(api_key=GEMINI_API_KEY)
+
+model = genai.GenerativeModel("gemini-1.5-flash")
+
+# =========================
+# HOME
+# =========================
 
 @app.route("/")
 def home():
     return render_template("index.html")
 
-# =====================================================
-# HEALTH CHECK
-# =====================================================
 
-@app.route("/health")
-def health():
+# =========================
+# CHAT API
+# =========================
 
-    return jsonify({
-        "status": "online",
-        "project": "EyeTech Pro",
-        "message": "AI backend operational"
-    })
+@app.route("/chat", methods=["POST"])
+def chat():
 
-# =====================================================
-# WAITLIST SYSTEM
-# =====================================================
+    data = request.json
+    user_message = data.get("message")
 
-@app.route("/api/waitlist", methods=["POST"])
-def waitlist():
+    prompt = f"""
+    Waxaad tahay EyeTech Core, sirdoonka rasmiga ah ee EyeTech Pro Somalia.
+    Hadalkaaga oo dhan waa Soomaali.
+    Marna ha sheegin magac kale oo AI ah.
+    U sharax dadka sida cilmiyeysan ee ay korontada u badbaadin karaan.
+    Noqo mid caqli badan, casri ah, oo Soomaali ah.
+
+    User:
+    {user_message}
+    """
 
     try:
-
-        data = request.get_json()
-
-        name = data.get("name")
-        email = data.get("email")
-        whatsapp = data.get("whatsapp")
-        feedback = data.get("feedback")
-
-        # =============================================
-        # SEND EMAIL TO COMPANY
-        # =============================================
-
-        resend.Emails.send({
-
-            "from": "EyeTech Pro <onboarding@resend.dev>",
-
-            "to": COMPANY_EMAIL,
-
-            "subject": "🚀 New EyeTech Waitlist User",
-
-            "html": f"""
-
-            <div style="font-family:Arial;padding:20px;">
-
-                <h2>New Waitlist Registration</h2>
-
-                <p><strong>Name:</strong> {name}</p>
-
-                <p><strong>Email:</strong> {email}</p>
-
-                <p><strong>WhatsApp:</strong> {whatsapp}</p>
-
-                <p><strong>Feedback:</strong></p>
-
-                <p>{feedback}</p>
-
-            </div>
-
-            """
-
-        })
-
-        # =============================================
-        # SEND CONFIRMATION TO USER
-        # =============================================
-
-        resend.Emails.send({
-
-            "from": "EyeTech Pro <onboarding@resend.dev>",
-
-            "to": email,
-
-            "subject": "Welcome to EyeTech Pro",
-
-            "html": f"""
-
-            <div style="background:#0a0f1e;padding:40px;color:white;font-family:Arial;">
-
-                <h1 style="color:#22d3ee;">
-                    Mahadsanid {name}
-                </h1>
-
-                <p>
-                    Waad ku mahadsan tahay inaad ku biirtay EyeTech Pro.
-                </p>
-
-                <p>
-                    Waxaan dhiseynaa mustaqbalka AI-ga Soomaaliya.
-                </p>
-
-                <p>
-                    Waxaan kula soo xiriiri doonaa marka platform-ka la bilaabo.
-                </p>
-
-            </div>
-
-            """
-
-        })
+        response = model.generate_content(prompt)
 
         return jsonify({
-            "success": True,
-            "message": "Waitlist success"
+            "response": response.text
         })
 
     except Exception as e:
-
         return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
-
-# =====================================================
-# AI ASSISTANT
-# =====================================================
-
-@app.route("/api/assistant", methods=["POST"])
-def assistant():
-
-    try:
-
-        data = request.get_json()
-
-        user_message = data.get("message")
-
-        # =============================================
-        # SEARCH ONLINE INFO
-        # =============================================
-
-        online_context = ""
-
-        try:
-
-            search_url = f"https://duckduckgo.com/?q={user_message}"
-
-            online_context = f"""
-User asked:
-{user_message}
-
-Search reference:
-{search_url}
-"""
-
-        except:
-            pass
-
-        # =============================================
-        # OPENAI RESPONSE
-        # =============================================
-
-        response = client.chat.completions.create(
-
-            model="gpt-4o-mini",
-
-            messages=[
-
-                {
-                    "role": "system",
-                    "content": """
-You are EyeTech Pro AI Assistant.
-
-You help Somali users understand:
-
-- electricity bills
-- energy usage
-- appliance efficiency
-- watt calculations
-- saving electricity
-- smart home systems
-
-Always respond in Somali language.
-
-Be intelligent and professional.
-"""
-                },
-
-                {
-                    "role": "user",
-                    "content": f"""
-{online_context}
-
-Question:
-{user_message}
-"""
-                }
-
-            ],
-
-            max_tokens=500
-
-        )
-
-        ai_response = response.choices[0].message.content
-
-        return jsonify({
-            "success": True,
-            "response": ai_response
+            "response": f"Error: {str(e)}"
         })
 
-    except Exception as e:
 
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+# =========================
+# IMAGE ANALYSIS API
+# =========================
 
-# =====================================================
-# AI IMAGE ANALYSIS
-# =====================================================
-
-@app.route("/api/analyze-image", methods=["POST"])
+@app.route("/analyze-image", methods=["POST"])
 def analyze_image():
 
-    try:
-
-        if "image" not in request.files:
-
-            return jsonify({
-                "success": False,
-                "error": "No image uploaded"
-            }), 400
-
-        file = request.files["image"]
-
-        image_bytes = file.read()
-
-        base64_image = base64.b64encode(image_bytes).decode("utf-8")
-
-        response = client.chat.completions.create(
-
-            model="gpt-4o-mini",
-
-            messages=[
-
-                {
-                    "role": "system",
-                    "content": """
-Analyze this appliance image.
-
-Return ONLY JSON.
-
-Format:
-
-{
-  "appliance": "string",
-  "wattage": number,
-  "monthly_cost": number,
-  "efficiency": "string",
-  "somali_tip": "string"
-}
-"""
-                },
-
-                {
-                    "role": "user",
-                    "content": [
-
-                        {
-                            "type": "text",
-                            "text": "Analyze this appliance image."
-                        },
-
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                        }
-
-                    ]
-                }
-
-            ],
-
-            max_tokens=300
-
-        )
-
-        result = response.choices[0].message.content
-
-        parsed = json.loads(result)
-
-        return jsonify(parsed)
-
-    except Exception as e:
-
+    if "image" not in request.files:
         return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+            "response": "Sawir lama helin."
+        })
 
-# =====================================================
-# ENERGY CALCULATOR
-# =====================================================
+    image = request.files["image"]
 
-@app.route("/api/calculate", methods=["POST"])
-def calculate():
+    filename = secure_filename(image.filename)
+
+    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+
+    image.save(filepath)
+
+    prompt = """
+    Waa maxay qalabkani?
+    Sidee korontadiisa loo badbaadin karaa?
+    Sharaxaad dheeraad ah sii qof Soomaali ah oo raba inuu biilka dhimo.
+    """
 
     try:
 
-        data = request.get_json()
+        uploaded_file = genai.upload_file(filepath)
 
-        wattage = float(data.get("wattage"))
-        hours = float(data.get("hours"))
-
-        # Somalia average electricity price
-        price_per_kwh = 0.35
-
-        daily_kwh = (wattage * hours) / 1000
-
-        daily_cost = daily_kwh * price_per_kwh
-
-        monthly_cost = daily_cost * 30
-
-        yearly_cost = daily_cost * 365
+        response = model.generate_content([
+            prompt,
+            uploaded_file
+        ])
 
         return jsonify({
-
-            "daily": round(daily_cost, 2),
-
-            "monthly": round(monthly_cost, 2),
-
-            "yearly": round(yearly_cost, 2)
-
+            "response": response.text
         })
 
     except Exception as e:
-
         return jsonify({
-            "error": str(e)
-        }), 500
+            "response": f"Error: {str(e)}"
+        })
 
-# =====================================================
-# 404
-# =====================================================
 
-@app.errorhandler(404)
-def not_found(e):
+# =========================
+# FEEDBACK API
+# =========================
+
+@app.route("/feedback", methods=["POST"])
+def feedback():
+
+    data = request.json
+
+    name = data.get("name")
+    email = data.get("email")
+    phone = data.get("phone")
+    message = data.get("message")
+
+    print("========= NEW FEEDBACK =========")
+    print("Name:", name)
+    print("Email:", email)
+    print("Phone:", phone)
+    print("Message:", message)
+    print("================================")
 
     return jsonify({
-        "error": "Route not found"
-    }), 404
+        "success": True
+    })
 
-# =====================================================
-# START SERVER
-# =====================================================
+
+# =========================
+# RUN
+# =========================
 
 if __name__ == "__main__":
-
-    port = int(os.environ.get("PORT", 5000))
-
-    app.run(
-        host="0.0.0.0",
-        port=port,
-        debug=True
-    )
+    app.run(debug=True)
