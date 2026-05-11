@@ -1,167 +1,258 @@
-from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS
-from openai import OpenAI
 import os
+import json
 import base64
 
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from openai import OpenAI
+from dotenv import load_dotenv
+
+# LOAD ENV
+load_dotenv()
+
+# APP
 app = Flask(__name__)
+
+# ENABLE CORS
 CORS(app)
 
-# =========================
-# OPENAI CLIENT
-# =========================
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY")
-)
+# OPENAI API KEY
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-# =========================
-# HOME PAGE
-# =========================
+if not OPENAI_API_KEY:
+    raise ValueError("OPENAI_API_KEY is missing")
+
+# OPENAI CLIENT
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# ==============================
+# HOME ROUTE
+# ==============================
+
 @app.route("/")
 def home():
-    return render_template("index.html")
-
-# =========================
-# HEALTH CHECK
-# =========================
-@app.route("/health")
-def health():
     return jsonify({
         "status": "online",
-        "ai": "connected",
-        "company": "EyeTech Pro"
+        "message": "EyeTech Pro AI Server Running"
     })
 
-# =========================
-# ENERGY CALCULATOR
-# =========================
-@app.route("/api/calculate", methods=["POST"])
-def calculate():
+# ==============================
+# AI CHAT ASSISTANT
+# ==============================
 
-    data = request.get_json()
-
-    wattage = float(data.get("wattage", 0))
-    hours = float(data.get("hours", 0))
-
-    somali_rate = 0.35
-
-    daily = ((wattage * hours) / 1000) * somali_rate
-    monthly = daily * 30
-    yearly = monthly * 12
-
-    return jsonify({
-        "daily": round(daily, 2),
-        "monthly": round(monthly, 2),
-        "yearly": round(yearly, 2)
-    })
-
-# =========================
-# REAL OPENAI CHAT
-# =========================
-@app.route("/api/assistant", methods=["POST"])
+@app.route('/api/assistant', methods=['POST'])
 def assistant():
 
-    data = request.get_json()
-    message = data.get("message", "")
+    try:
 
-    completion = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": """
-                You are EyeTech Pro AI Assistant.
-                You help Somali users understand:
-                - electricity usage
-                - appliance costs
-                - energy saving
-                - smart home systems
+        data = request.json
 
-                Speak naturally in Somali and English.
-                """
-            },
-            {
-                "role": "user",
-                "content": message
-            }
-        ]
-    )
+        user_message = data.get('message', '')
 
-    reply = completion.choices[0].message.content
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
 
-    return jsonify({
-        "response": reply
-    })
+                {
+                    "role": "system",
+                    "content": """
+You are EyeTech Pro AI Assistant.
 
-# =========================
-# REAL AI IMAGE ANALYSIS
-# =========================
-@app.route("/api/analyze-image", methods=["POST"])
+You are:
+- professional
+- futuristic
+- intelligent
+- Somali + English speaking
+
+You help users:
+- understand appliances
+- reduce electricity bills
+- understand wattage
+- save energy
+- understand smart home systems
+
+Keep answers short, modern, and intelligent.
+"""
+                },
+
+                {
+                    "role": "user",
+                    "content": user_message
+                }
+
+            ]
+        )
+
+        return jsonify({
+            "response": response.choices[0].message.content
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# ==============================
+# IMAGE ANALYSIS
+# ==============================
+
+@app.route('/api/analyze-image', methods=['POST'])
 def analyze_image():
 
-    image = request.files["image"]
+    try:
 
-    image_bytes = image.read()
+        # CHECK IMAGE
+        if 'image' not in request.files:
+            return jsonify({
+                "error": "No image uploaded"
+            }), 400
 
-    base64_image = base64.b64encode(image_bytes).decode("utf-8")
+        image = request.files['image']
 
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": """
-                Analyze appliance images.
+        image_bytes = image.read()
 
-                Return:
-                appliance name,
-                estimated wattage,
-                monthly electricity cost in Somalia,
-                efficiency class,
-                Somali energy saving tip.
-                """
-            },
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "Analyze this appliance."
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:image/jpeg;base64,{base64_image}"
+        # CONVERT TO BASE64
+        base64_image = base64.b64encode(image_bytes).decode('utf-8')
+
+        # OPENAI VISION
+        response = client.chat.completions.create(
+
+            model="gpt-4o-mini",
+
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+
+                        {
+                            "type": "text",
+                            "text": """
+Analyze this appliance image.
+
+Return ONLY valid JSON:
+
+{
+  "appliance": "",
+  "wattage": "",
+  "monthly_cost": "",
+  "efficiency": "",
+  "somali_tip": ""
+}
+
+Rules:
+- wattage = estimated watts
+- monthly_cost = estimated Somalia electricity monthly cost in USD
+- efficiency = Low / Medium / High
+- somali_tip = short Somali energy-saving tip
+"""
+                        },
+
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
                         }
-                    }
-                ]
+
+                    ]
+                }
+            ],
+
+            response_format={
+                "type": "json_object"
             }
-        ],
-        max_tokens=300
-    )
 
-    result = response.choices[0].message.content
+        )
 
-    return jsonify({
-        "result": result
-    })
+        result = json.loads(
+            response.choices[0].message.content
+        )
 
-# =========================
+        return jsonify(result)
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# ==============================
+# ENERGY CALCULATOR
+# ==============================
+
+@app.route('/api/calculate', methods=['POST'])
+def calculate():
+
+    try:
+
+        data = request.json
+
+        wattage = float(data.get("wattage", 0))
+        hours = float(data.get("hours", 0))
+
+        # SOMALIA AVG RATE
+        rate = 0.50
+
+        daily_kwh = (wattage * hours) / 1000
+
+        daily_cost = daily_kwh * rate
+        monthly_cost = daily_cost * 30
+        yearly_cost = daily_cost * 365
+
+        return jsonify({
+            "daily": round(daily_cost, 2),
+            "monthly": round(monthly_cost, 2),
+            "yearly": round(yearly_cost, 2)
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# ==============================
 # WAITLIST
-# =========================
-@app.route("/api/waitlist", methods=["POST"])
+# ==============================
+
+@app.route('/api/waitlist', methods=['POST'])
 def waitlist():
 
-    data = request.get_json()
+    try:
 
-    print("NEW USER:", data)
+        data = request.json
 
-    return jsonify({
-        "success": True
-    })
+        name = data.get("name")
+        email = data.get("email")
+        whatsapp = data.get("whatsapp")
+        feedback = data.get("feedback")
 
-# =========================
-# RUN
-# =========================
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+        print("\n========= NEW WAITLIST =========")
+        print("NAME:", name)
+        print("EMAIL:", email)
+        print("WHATSAPP:", whatsapp)
+        print("FEEDBACK:", feedback)
+        print("================================\n")
+
+        return jsonify({
+            "success": True,
+            "message": "Waad ku mahadsantahay ku biirista EyeTech Pro."
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
+
+# ==============================
+# START SERVER
+# ==============================
+
+if __name__ == '__main__':
+
+    app.run(
+        host='0.0.0.0',
+        port=int(os.environ.get("PORT", 5000))
+    )
