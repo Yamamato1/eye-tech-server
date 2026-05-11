@@ -5,6 +5,7 @@ import resend
 import os
 import base64
 import json
+import requests
 
 # =====================================================
 # APP CONFIG
@@ -66,9 +67,9 @@ def waitlist():
         whatsapp = data.get("whatsapp")
         feedback = data.get("feedback")
 
-        # =================================================
-        # EMAIL TO COMPANY
-        # =================================================
+        # =============================================
+        # SEND EMAIL TO COMPANY
+        # =============================================
 
         resend.Emails.send({
 
@@ -76,13 +77,13 @@ def waitlist():
 
             "to": COMPANY_EMAIL,
 
-            "subject": "New EyeTech Pro Waitlist User",
+            "subject": "🚀 New EyeTech Waitlist User",
 
             "html": f"""
 
             <div style="font-family:Arial;padding:20px;">
 
-                <h2>New Waitlist User</h2>
+                <h2>New Waitlist Registration</h2>
 
                 <p><strong>Name:</strong> {name}</p>
 
@@ -100,9 +101,9 @@ def waitlist():
 
         })
 
-        # =================================================
-        # EMAIL TO USER
-        # =================================================
+        # =============================================
+        # SEND CONFIRMATION TO USER
+        # =============================================
 
         resend.Emails.send({
 
@@ -110,11 +111,11 @@ def waitlist():
 
             "to": email,
 
-            "subject": "Welcome To EyeTech Pro",
+            "subject": "Welcome to EyeTech Pro",
 
             "html": f"""
 
-            <div style="font-family:Arial;padding:30px;background:#0a0f1e;color:white;">
+            <div style="background:#0a0f1e;padding:40px;color:white;font-family:Arial;">
 
                 <h1 style="color:#22d3ee;">
                     Mahadsanid {name}
@@ -125,11 +126,11 @@ def waitlist():
                 </p>
 
                 <p>
-                    Waxaan kuu soo diri doonaa updates-ka mashruuca.
+                    Waxaan dhiseynaa mustaqbalka AI-ga Soomaaliya.
                 </p>
 
                 <p>
-                    Soomaaliya AI mustaqbalkeeda waan dhisaynaa 🇸🇴
+                    Waxaan kula soo xiriiri doonaa marka platform-ka la bilaabo.
                 </p>
 
             </div>
@@ -163,9 +164,34 @@ def assistant():
 
         user_message = data.get("message")
 
+        # =============================================
+        # SEARCH ONLINE INFO
+        # =============================================
+
+        online_context = ""
+
+        try:
+
+            search_url = f"https://duckduckgo.com/?q={user_message}"
+
+            online_context = f"""
+User asked:
+{user_message}
+
+Search reference:
+{search_url}
+"""
+
+        except:
+            pass
+
+        # =============================================
+        # OPENAI RESPONSE
+        # =============================================
+
         response = client.chat.completions.create(
 
-            model="gpt-4o",
+            model="gpt-4o-mini",
 
             messages=[
 
@@ -175,21 +201,28 @@ def assistant():
 You are EyeTech Pro AI Assistant.
 
 You help Somali users understand:
-- electricity bills
-- appliance electricity usage
-- energy saving
-- Somali home electricity systems
-- watt calculations
-- electricity cost reduction
 
-Always answer in Somali language.
-Always be smart and detailed.
+- electricity bills
+- energy usage
+- appliance efficiency
+- watt calculations
+- saving electricity
+- smart home systems
+
+Always respond in Somali language.
+
+Be intelligent and professional.
 """
                 },
 
                 {
                     "role": "user",
-                    "content": user_message
+                    "content": f"""
+{online_context}
+
+Question:
+{user_message}
+"""
                 }
 
             ],
@@ -221,10 +254,6 @@ def analyze_image():
 
     try:
 
-        # =================================================
-        # CHECK IMAGE
-        # =================================================
-
         if "image" not in request.files:
 
             return jsonify({
@@ -232,79 +261,34 @@ def analyze_image():
                 "error": "No image uploaded"
             }), 400
 
-        # =================================================
-        # GET IMAGE
-        # =================================================
-
         file = request.files["image"]
 
         image_bytes = file.read()
 
         base64_image = base64.b64encode(image_bytes).decode("utf-8")
 
-        # =================================================
-        # USER HOURS
-        # =================================================
-
-        hours = request.form.get("hours")
-
-        if not hours:
-            hours = 8
-
-        hours = float(hours)
-
-        # =================================================
-        # SOMALIA ELECTRICITY PRICE
-        # =================================================
-
-        price_per_kwh = 0.35
-
-        # =================================================
-        # OPENAI ANALYSIS
-        # =================================================
-
         response = client.chat.completions.create(
 
-            model="gpt-4o",
+            model="gpt-4o-mini",
 
             messages=[
 
                 {
                     "role": "system",
-                    "content": f"""
-You are an expert AI appliance analyzer.
-
-TASKS:
-1. Identify appliance from image.
-2. Detect brand/model if visible.
-3. Estimate REALISTIC watt usage using internet-level appliance knowledge.
-4. Calculate electricity costs.
-
-Electricity Price:
-{price_per_kwh}$ per kWh
-
-Usage:
-{hours} hours/day
+                    "content": """
+Analyze this appliance image.
 
 Return ONLY JSON.
 
-FORMAT:
+Format:
 
-{{
-  "appliance":"string",
-  "model":"string",
-  "wattage":100,
-  "daily_cost":1,
-  "monthly_cost":10,
-  "yearly_cost":100,
-  "efficiency":"A+",
-  "somali_tip":"string"
-}}
-
-IMPORTANT:
-- Return ONLY JSON
-- No markdown
-- No explanations
+{
+  "appliance": "string",
+  "wattage": number,
+  "monthly_cost": number,
+  "efficiency": "string",
+  "somali_tip": "string"
+}
 """
                 },
 
@@ -314,7 +298,7 @@ IMPORTANT:
 
                         {
                             "type": "text",
-                            "text": "Analyze this appliance image carefully."
+                            "text": "Analyze this appliance image."
                         },
 
                         {
@@ -329,51 +313,15 @@ IMPORTANT:
 
             ],
 
-            max_tokens=500
+            max_tokens=300
 
         )
 
-        # =================================================
-        # AI RESPONSE
-        # =================================================
-
         result = response.choices[0].message.content
-
-        # =================================================
-        # CLEAN JSON
-        # =================================================
-
-        result = result.replace("```json", "")
-        result = result.replace("```", "")
-        result = result.strip()
 
         parsed = json.loads(result)
 
-        # =================================================
-        # RETURN DATA
-        # =================================================
-
-        return jsonify({
-
-            "success": True,
-
-            "appliance": parsed.get("appliance"),
-
-            "model": parsed.get("model"),
-
-            "wattage": parsed.get("wattage"),
-
-            "daily_cost": parsed.get("daily_cost"),
-
-            "monthly_cost": parsed.get("monthly_cost"),
-
-            "yearly_cost": parsed.get("yearly_cost"),
-
-            "efficiency": parsed.get("efficiency"),
-
-            "somali_tip": parsed.get("somali_tip")
-
-        })
+        return jsonify(parsed)
 
     except Exception as e:
 
@@ -394,15 +342,10 @@ def calculate():
         data = request.get_json()
 
         wattage = float(data.get("wattage"))
-
         hours = float(data.get("hours"))
 
-        # Somalia electricity rate
+        # Somalia average electricity price
         price_per_kwh = 0.35
-
-        # =================================================
-        # CALCULATIONS
-        # =================================================
 
         daily_kwh = (wattage * hours) / 1000
 
@@ -412,13 +355,7 @@ def calculate():
 
         yearly_cost = daily_cost * 365
 
-        # =================================================
-        # RETURN
-        # =================================================
-
         return jsonify({
-
-            "success": True,
 
             "daily": round(daily_cost, 2),
 
@@ -431,7 +368,6 @@ def calculate():
     except Exception as e:
 
         return jsonify({
-            "success": False,
             "error": str(e)
         }), 500
 
@@ -443,7 +379,6 @@ def calculate():
 def not_found(e):
 
     return jsonify({
-        "success": False,
         "error": "Route not found"
     }), 404
 
@@ -457,5 +392,6 @@ if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-        port=port
+        port=port,
+        debug=True
     )
