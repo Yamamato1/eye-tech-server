@@ -72,7 +72,7 @@ def waitlist():
 
         resend.Emails.send({
 
-            "from": "EyeTech Pro <onboarding@resend.dev>",
+            "from": "onboarding@resend.dev",
 
             "to": COMPANY_EMAIL,
 
@@ -106,7 +106,7 @@ def waitlist():
 
         resend.Emails.send({
 
-            "from": "EyeTech Pro <onboarding@resend.dev>",
+            "from": "onboarding@resend.dev",
 
             "to": email,
 
@@ -145,7 +145,8 @@ def waitlist():
 
     except Exception as e:
 
-        print("WAITLIST ERROR:", str(e))
+        print("WAITLIST ERROR:")
+        print(str(e))
 
         return jsonify({
             "success": False,
@@ -309,7 +310,6 @@ def calculate():
         wattage = float(data.get("wattage"))
         hours = float(data.get("hours"))
 
-        # Somalia estimated electricity price
         price_per_kwh = 0.35
 
         daily_kwh = (wattage * hours) / 1000
