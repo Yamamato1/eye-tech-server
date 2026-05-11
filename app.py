@@ -99,40 +99,38 @@ def waitlist():
         # ============================================
         # SEND CONFIRMATION EMAIL TO USER
         # ============================================
+resend.Emails.send({
 
-        resend.Emails.send({
+    "from": "EyeTech Pro <onboarding@resend.dev>",
 
-            "from": "EyeTech Pro <onboarding@resend.dev>",
+    "to": "eyetech.engineering2026@gmail.com",
 
-            "to": email,
+    "subject": f"New Waitlist User - {name}",
 
-            "subject": "Welcome to EyeTech Pro",
+    "html": f"""
 
-            "html": f"""
+    <div style="font-family:Arial;padding:20px;">
 
-            <div style="font-family:Arial;padding:20px;background:#0a0f1e;color:white;">
+        <h2>New EyeTech Pro Signup</h2>
 
-                <h1 style="color:#22d3ee;">
-                    Mahadsanid {name}
-                </h1>
+        <p><strong>Name:</strong> {name}</p>
 
-                <p>
-                    Waad ku mahadsan tahay inaad ku biirtay EyeTech Pro.
-                </p>
+        <p><strong>Email:</strong> {email}</p>
 
-                <p>
-                    Waxaan dhiseynaa mustaqbalka AI-ga Soomaaliya.
-                </p>
+        <p><strong>WhatsApp:</strong> {whatsapp}</p>
 
-                <p>
-                    Waxaan kula soo xiriiri doonaa marka nidaamka la bilaabo.
-                </p>
+        <p><strong>Feedback:</strong></p>
 
-            </div>
+        <p>{feedback}</p>
 
-            """
+    </div>
 
-        })
+    """
+
+})
+      
+
+  
 
         return jsonify({
             "success": True,
