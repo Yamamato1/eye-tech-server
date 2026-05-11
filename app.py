@@ -145,6 +145,8 @@ def waitlist():
 
     except Exception as e:
 
+        print("WAITLIST ERROR:", str(e))
+
         return jsonify({
             "success": False,
             "error": str(e)
@@ -307,6 +309,7 @@ def calculate():
         wattage = float(data.get("wattage"))
         hours = float(data.get("hours"))
 
+        # Somalia estimated electricity price
         price_per_kwh = 0.35
 
         daily_kwh = (wattage * hours) / 1000
