@@ -1,478 +1,230 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="so">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>EyeTech Pro</title>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-
-body{
-    margin:0;
-    background:#0b1120;
-    color:white;
-    font-family:Arial;
-}
-
-.container{
-    padding:20px;
-}
-
-.card{
-    background:#111827;
-    padding:20px;
-    border-radius:20px;
-    margin-bottom:20px;
-    box-shadow:0 0 20px rgba(0,0,0,0.4);
-}
-
-h1,h2,h3{
-    margin-top:0;
-}
-
-input,select,button{
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
-    border-radius:10px;
-    font-size:16px;
-}
-
-button{
-    background:#2563eb;
-    color:white;
-    cursor:pointer;
-}
-
-.toggle{
-    display:flex;
-    justify-content:space-between;
-    margin-top:15px;
-}
-
-.status{
-    padding:10px;
-    border-radius:10px;
-    margin-bottom:20px;
-}
-
-.connected{
-    background:#14532d;
-}
-
-.disconnected{
-    background:#7f1d1d;
-}
-
-.chat-box{
-    height:200px;
-    overflow:auto;
-    background:#1f2937;
-    padding:10px;
-    border-radius:10px;
-    margin-bottom:10px;
-}
-
-.message{
-    margin-bottom:10px;
-}
-
-.user{
-    color:#60a5fa;
-}
-
-.ai{
-    color:#34d399;
-}
-
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EyeTech Pro | Hormuudka AI-ga Soomaaliya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0f1e;
+            color: white;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .text-gradient {
+            background: linear-gradient(to right, #22d3ee, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glow {
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+        }
+        .hero-blob {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(6, 182, 212, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+            z-index: -1;
+            filter: blur(60px);
+        }
+        .input-glass {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            transition: all 0.3s ease;
+        }
+        .input-glass:focus {
+            border-color: #22d3ee;
+            background: rgba(255, 255, 255, 0.08);
+            outline: none;
+        }
+        .card-hover:hover {
+            transform: translateY(-10px);
+            border-color: rgba(34, 211, 238, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+    </style>
 </head>
-
 <body>
 
-<div class="container">
-
-<h1>⚡ EyeTech Pro</h1>
-
-<div id="connection" class="status disconnected">
-Disconnected
-</div>
-
-<div id="app"></div>
-
-</div>
-
-<script>
-
-const API = "https://eye-tech-server.onrender.com";
-
-let userId = localStorage.getItem("user_id");
-
-if(!userId){
-    userId = "user_" + Math.random().toString(36).substr(2,9);
-    localStorage.setItem("user_id", userId);
-}
-
-const app = document.getElementById("app");
-
-const surveyDone = localStorage.getItem("survey_done");
-
-
-// ======================================
-// SURVEY
-// ======================================
-
-function showSurvey(){
-
-app.innerHTML = `
-
-<div class="card">
-
-<h2>Home Setup</h2>
-
-<input id="price" placeholder="Electricity price per kWh">
-
-<input id="lights" placeholder="Number of lights">
-
-<input id="tv" placeholder="TV quantity">
-
-<input id="fridge" placeholder="Fridge quantity">
-
-<input id="washing" placeholder="Washing machine quantity">
-
-<input id="oven" placeholder="Oven quantity">
-
-<input id="ac" placeholder="AC quantity">
-
-<select id="ac_type">
-<option value="old">Old AC</option>
-<option value="normal">Normal AC</option>
-<option value="inverter">Inverter AC</option>
-</select>
-
-<button onclick="submitSurvey()">
-Start EyeTech
-</button>
-
-</div>
-
-`;
-
-}
-
-
-// ======================================
-// SUBMIT SURVEY
-// ======================================
-
-async function submitSurvey(){
-
-const body = {
-    user_id:userId,
-    price_per_kwh:parseFloat(price.value),
-    lights:parseInt(lights.value),
-    tv:parseInt(tv.value),
-    fridge:parseInt(fridge.value),
-    washing_machine:parseInt(washing.value),
-    oven:parseInt(oven.value),
-    ac:parseInt(ac.value),
-    ac_type:ac_type.value
-};
-
-const res = await fetch(API + "/survey",{
-    method:"POST",
-    headers:{
-        "Content-Type":"application/json"
-    },
-    body:JSON.stringify(body)
-});
-
-if(res.ok){
-
-    localStorage.setItem("survey_done", true);
-
-    location.reload();
-}
-
-}
-
-
-// ======================================
-// DASHBOARD
-// ======================================
-
-function showDashboard(){
-
-app.innerHTML = `
-
-<div class="card">
-
-<h2>⚡ Live Energy</h2>
-
-<h3 id="voltage">Voltage: --</h3>
-<h3 id="current">Current: --</h3>
-<h3 id="power">Power: --</h3>
-
-</div>
-
-<div class="card">
-
-<h2>📊 Usage</h2>
-
-<h3 id="daily">Daily kWh: --</h3>
-<h3 id="monthly">Monthly kWh: --</h3>
-<h3 id="cost">Monthly Cost: --</h3>
-<h3 id="peak">Peak Hour: --</h3>
-<h3 id="savings">Savings: --</h3>
-
-<div id="insights"></div>
-
-</div>
-
-<div class="card">
-
-<h2>🔌 Devices</h2>
-
-<div class="toggle">
-<label>Lights</label>
-<input type="checkbox" onchange="toggleDevice('lights',this)">
-</div>
-
-<div class="toggle">
-<label>TV</label>
-<input type="checkbox" onchange="toggleDevice('tv',this)">
-</div>
-
-<div class="toggle">
-<label>Fridge</label>
-<input type="checkbox" onchange="toggleDevice('fridge',this)">
-</div>
-
-<div class="toggle">
-<label>Washing Machine</label>
-<input type="checkbox" onchange="toggleDevice('washing_machine',this)">
-</div>
-
-<div class="toggle">
-<label>Oven</label>
-<input type="checkbox" onchange="toggleDevice('oven',this)">
-</div>
-
-<div class="toggle">
-<label>AC</label>
-<input type="checkbox" onchange="toggleDevice('ac',this)">
-</div>
-
-</div>
-
-<div class="card">
-
-<h2>📈 Weekly Usage</h2>
-
-<canvas id="chart"></canvas>
-
-</div>
-
-<div class="card">
-
-<h2>🤖 EyeTech AI</h2>
-
-<div class="chat-box" id="chat"></div>
-
-<input id="question" placeholder="Ask EyeTech AI...">
-
-<button onclick="askAI()">
-Ask AI
-</button>
-
-</div>
-
-`;
-
-createChart();
-
-setInterval(fetchLive,3000);
-
-setInterval(fetchDashboard,3000);
-
-}
-
-
-// ======================================
-// TOGGLE DEVICE
-// ======================================
-
-async function toggleDevice(device,el){
-
-await fetch(API + "/track",{
-    method:"POST",
-    headers:{
-        "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-        user_id:userId,
-        device:device,
-        action: el.checked ? "on":"off"
-    })
-});
-
-}
-
-
-// ======================================
-// LIVE DATA
-// ======================================
-
-async function fetchLive(){
-
-try{
-
-const res = await fetch(API + "/live/" + userId);
-
-const data = await res.json();
-
-if(data.error){
-
-document.getElementById("connection").className = "status disconnected";
-document.getElementById("connection").innerText = "Disconnected";
-
-return;
-}
-
-document.getElementById("connection").className = "status connected";
-document.getElementById("connection").innerText = "Connected";
-
-voltage.innerText = "Voltage: " + data.voltage + " V";
-current.innerText = "Current: " + data.current + " A";
-power.innerText = "Power: " + data.power + " W";
-
-}catch(e){
-
-document.getElementById("connection").className = "status disconnected";
-document.getElementById("connection").innerText = "Disconnected";
-
-}
-
-}
-
-
-// ======================================
-// DASHBOARD DATA
-// ======================================
-
-async function fetchDashboard(){
-
-const res = await fetch(API + "/latest/" + userId);
-
-const data = await res.json();
-
-daily.innerText = "Daily kWh: " + data.daily_kwh;
-
-monthly.innerText = "Monthly kWh: " + data.monthly_kwh;
-
-cost.innerText = "Monthly Cost: $" + data.monthly_cost;
-
-peak.innerText = "Peak Hour: " + data.peak_hour;
-
-savings.innerText = "Savings: $" + data.savings;
-
-insights.innerHTML = "";
-
-data.insights.forEach(i=>{
-    insights.innerHTML += `<p>${i}</p>`;
-});
-
-updateChart(data.weekly);
-
-}
-
-
-// ======================================
-// AI CHAT
-// ======================================
-
-async function askAI(){
-
-const q = question.value;
-
-chat.innerHTML += `
-<div class="message user">
-You: ${q}
-</div>
-`;
-
-const res = await fetch(API + "/ai-chat",{
-    method:"POST",
-    headers:{
-        "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-        message:q
-    })
-});
-
-const data = await res.json();
-
-chat.innerHTML += `
-<div class="message ai">
-EyeTech AI: ${data.reply}
-</div>
-`;
-
-question.value = "";
-
-}
-
-
-// ======================================
-// CHART
-// ======================================
-
-let chart;
-
-function createChart(){
-
-const ctx = document.getElementById('chart');
-
-chart = new Chart(ctx,{
-    type:'line',
-    data:{
-        labels:[],
-        datasets:[{
-            label:'kWh',
-            data:[]
-        }]
-    }
-});
-
-}
-
-function updateChart(weekly){
-
-chart.data.labels = Object.keys(weekly);
-
-chart.data.datasets[0].data = Object.values(weekly);
-
-chart.update();
-
-}
-
-
-// ======================================
-// INIT
-// ======================================
-
-if(!surveyDone){
-    showSurvey();
-}else{
-    showDashboard();
-}
-
-</script>
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex justify-between items-center glass rounded-2xl px-6 py-3">
+            <div class="flex items-center gap-2">
+                <div class="bg-cyan-500 p-1.5 rounded-lg shadow-lg shadow-cyan-500/20">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                </div>
+                <span class="text-xl font-bold tracking-tight">EyeTech Pro</span>
+            </div>
+            
+            <div class="hidden md:flex gap-8 text-sm font-medium text-gray-400">
+                <a href="#about" class="hover:text-cyan-400 transition-colors">Yaan Nahay?</a>
+                <a href="#mission" class="hover:text-cyan-400 transition-colors">Hadafkayaga</a>
+                <a href="#waitlist" class="hover:text-cyan-400 transition-colors">Ku Biir</a>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <a href="#waitlist" class="bg-cyan-600 hover:bg-cyan-500 text-white px-5 py-2 rounded-xl text-sm font-bold transition-all glow">Igu Wargeli</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 px-6">
+        <div class="hero-blob top-0 left-1/4"></div>
+        <div class="max-w-5xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-bold mb-6">
+                <span>PROJECT S-AI: HORMUUDKA</span>
+                <span class="w-1 h-1 bg-cyan-400 rounded-full"></span>
+                <span>Nidaamkii ugu horreeyay oo AI ah oo Soomaali leedahay</span>
+            </div>
+            <h1 class="text-5xl md:text-7xl font-extrabold leading-tight mb-6">
+                Xallinta Biilka Korontada <br> 
+                <span class="text-gradient">oo Gacmahaaga ku Jirta</span>
+            </h1>
+            <p class="text-gray-400 text-lg md:text-xl max-w-3xl mx-auto mb-10 leading-relaxed">
+                Ku soo dhowaada **EyeTech Pro**, halka ay isaga yimaadeen hal-abuurka Soomaaliyeed iyo garadka macmalka ah (AI). Waxaan dhiseynaa tignoolajiyad kuu ogolaanaysa inaad maamusho, fahamto, oo aad xakamayso isticmaalka tamarta gurigaaga si aan horay loo arag.
+            </p>
+            <div class="flex flex-col sm:flex-row justify-center gap-4">
+                <a href="#waitlist" class="bg-white text-black px-8 py-4 rounded-xl font-bold text-lg hover:bg-gray-200 transition-all flex items-center justify-center gap-2">
+                    Nagu Caawi Feedback-gaaga
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </a>
+                <a href="#about" class="glass px-8 py-4 rounded-xl font-bold text-lg hover:bg-white/10 transition-all">
+                    Baro sheekadeena
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Detailed Intro / About Section -->
+    <section id="about" class="py-24 px-6 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                <div class="relative">
+                    <div class="absolute -top-10 -left-10 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl"></div>
+                    <h2 class="text-3xl md:text-5xl font-bold mb-8 leading-tight">Maxay tahay <br><span class="text-cyan-400">EyeTech Pro?</span></h2>
+                    <div class="space-y-6 text-gray-300 text-lg leading-relaxed">
+                        <p>
+                            EyeTech Pro maahan kaliya shirkad Software; waa dhaqdhaqaaq ay hormuud ka yihiin aqoonyahano Soomaaliyeed oo doonaya inay dalka keenaan heerka ugu sarreeya ee **Artificial Intelligence (AI)**. 
+                        </p>
+                        <p>
+                            Waxaan ogaannay in biilka korontada uu culays weyn ku yahay qoysas badan oo Soomaaliyeed. Sidaas darteed, waxaan dhisnay nidaam si toos ah u aqoonsanaya qalabkaaga korontada, kuu xisaabinaya kharashka, isla markaana ku siinaya talooyin ku qoran **Af-Soomaali** si aad lacagtaada u badbaadiso.
+                        </p>
+                        <p class="font-bold text-white italic border-l-4 border-cyan-500 pl-4">
+                            "Hadafkayagu waa inaan tamarta gurigaaga ka dhigno mid aad adigu gacanta ku hayso, halkii ay korontadu kugu yaabin lahayd dhammaadka bishii."
+                        </p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="glass p-8 rounded-3xl card-hover transition-all">
+                        <h4 class="text-xl font-bold mb-3 text-cyan-400">Maxaa naga dhigay kuwa gaar ah?</h4>
+                        <p class="text-gray-400 text-sm">EyeTech Pro waa nidaamkii ugu horreeyay ee AI ah oo si gaar ah loogu habeeyay deegaanka Soomaalida, isagoo garanaya qalabka caanka ka ah dalkeena iyo qiimaha korontada ee shirkadaha maxalliga ah.</p>
+                    </div>
+                    <div class="glass p-8 rounded-3xl card-hover transition-all">
+                        <h4 class="text-xl font-bold mb-3 text-purple-400">Xogtaadu waa mid amaan ah</h4>
+                        <p class="text-gray-400 text-sm">Waxaan muhiimad weyn siineynaa sirta macaamiishayada. Dhammaan sawirada iyo xogta aad la wadaagto AI-ga waxaa loo isticmaalaa oo kaliya falanqaynta korontadaada.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Mission & Vision -->
+    <section id="mission" class="py-24 px-6 bg-white/[0.01]">
+        <div class="max-w-7xl mx-auto text-center mb-16">
+            <h2 class="text-4xl font-bold mb-4">Hadafkayaga iyo Hiigsiga</h2>
+            <p class="text-gray-400 max-w-2xl mx-auto">Waxaan halkan u joognaa inaan bedelno qaabka loo isticmaalo tiknoolajiyadda ee Soomaaliya.</p>
+        </div>
+        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="glass p-10 rounded-[2.5rem] border-cyan-500/10">
+                <div class="w-16 h-16 bg-cyan-500/20 rounded-2xl flex items-center justify-center mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                </div>
+                <h3 class="text-2xl font-bold mb-4">Wacyigelinta Tamarta</h3>
+                <p class="text-gray-400 leading-relaxed">Waxaan doonaynaa inaan dadka Soomaaliyeed barno inay noqdaan macaamiil xariif ah oo garanaya halka ay lacagtooda ku baxayso. Korontada oo la badbaadiyo waa dhaqaale u soo laabtay qoyska iyo deegaanka oo la daryeelay.</p>
+            </div>
+            <div class="glass p-10 rounded-[2.5rem] border-purple-500/10">
+                <div class="w-16 h-16 bg-purple-500/20 rounded-2xl flex items-center justify-center mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                </div>
+                <h3 class="text-2xl font-bold mb-4">Horumarinta AI Soomaaliyeed</h3>
+                <p class="text-gray-400 leading-relaxed">Waxaan aaminsanahay in Soomaaliya ay la tartami karto adduunka. EyeTech Pro waa tillaabadii ugu horreysay ee lagu muujinayo in maskaxda Soomaaliyeed ay abuuri karaan AI tayo sare leh.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Waitlist / Feedback Form -->
+    <section id="waitlist" class="py-24 px-6 relative">
+        <div class="max-w-3xl mx-auto">
+            <div class="glass p-8 md:p-12 rounded-[2.5rem] border-cyan-500/20 relative">
+                <div class="text-center mb-10">
+                    <h2 class="text-3xl font-bold mb-4">Noo Sheeg Ra'yigaaga & Nagu Soo Biir</h2>
+                    <p class="text-gray-400">EyeTech Pro wuxuu ku jiraa wajigii ugu dambeeyay ee dhismaha. Ma u baahan tahay nidaamkan? Noo sheeg waxa aad jeceshahay inaan ku darno.</p>
+                </div>
+                
+                <form class="space-y-6" onsubmit="event.preventDefault(); document.getElementById('success-msg').classList.remove('hidden'); this.classList.add('hidden');">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-gray-400">Magacaaga oo buuxa</label>
+                            <input type="text" placeholder="Gali magacaaga" class="w-full px-5 py-4 rounded-xl input-glass" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-gray-400">Taleefankaaga WhatsApp</label>
+                            <input type="tel" placeholder="+252..." class="w-full px-5 py-4 rounded-xl input-glass" required>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2 text-gray-400">Sidee EyeTech Pro kuugu caawin karaa?</label>
+                        <textarea rows="4" placeholder="Tusaale: Waxaan rabaa inaan ogaado qalabka ugu biilka badan gurigayga..." class="w-full px-5 py-4 rounded-xl input-glass" required></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-5 rounded-xl transition-all glow text-lg">
+                        Igu soo dar liiska sugitaanka
+                    </button>
+                </form>
+
+                <div id="success-msg" class="hidden text-center py-10">
+                    <div class="w-20 h-20 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <h3 class="text-2xl font-bold mb-2">Waan ku helnay!</h3>
+                    <p class="text-gray-400">Mahadsanid. Ra'yigaaga aad ayaan u qiimeyneynaa, dhowaanna waan kula soo xiriiri doonaa marka aan "Beta Test" bilaabayno.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-16 border-t border-white/5 px-6">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-10">
+            <div class="text-center md:text-left">
+                <div class="flex items-center justify-center md:justify-start gap-2 mb-4">
+                    <div class="bg-cyan-500 p-1.5 rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    </div>
+                    <span class="text-2xl font-bold tracking-tight">EyeTech Pro</span>
+                </div>
+                <p class="text-gray-500 max-w-sm">Tiknoolajiyad Soomaaliyeed oo loogu talagalay in lagu badbaadiyo tamarta iyo dhaqaalahaaga.</p>
+            </div>
+            <div class="text-gray-500 text-sm">
+                &copy; 2024 EyeTech Pro. All Rights Reserved. <br>
+                <span class="text-cyan-500/50">"First Somali AI Project"</span>
+            </div>
+            <div class="flex gap-6">
+                <a href="#" class="text-gray-400 hover:text-white transition-colors">Facebook</a>
+                <a href="#" class="text-gray-400 hover:text-white transition-colors">Twitter (X)</a>
+                <a href="#" class="text-gray-400 hover:text-white transition-colors">WhatsApp</a>
+            </div>
+        </div>
+    </footer>
 
 </body>
 </html>
