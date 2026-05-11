@@ -341,107 +341,212 @@
         </div>
     </footer>
 
-    <script>
-        const apiKey = ""; // System provided
+<!-- REPLACE YOUR OLD <script> SECTION WITH THIS -->
 
-        async function callCore(prompt, isImage = false, imageData = null) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const contents = [{ parts: [{ text: prompt }] }];
+<script>
 
-            if (isImage && imageData) {
-                contents[0].parts.push({
-                    inlineData: { mimeType: "image/png", data: imageData.split(',')[1] }
-                });
-            }
+async function handleChat() {
 
-            try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents,
-                        systemInstruction: {
-                            parts: [{ text: "Waxaad tahay EyeTech Core, sirdoonka rasmiga ah ee EyeTech Pro Somalia. Hadalkaaga oo dhan waa Soomaali. Marna ha sheegin magac kale oo AI ah. U sharax dadka sida cilmiyeysan ee ay korontada u badbaadin karaan. Noqo mid caqli badan, casri ah, oo Soomaali ah. Haddii qofku ku weydiiyo biilka, u sheeg in xalku yahay fahamka awoodda (Watts) ee qalab kasta." }]
-                        }
-                    })
-                });
-                const data = await res.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Raalli ahow, fariintaada hadda ma falanqeyn karo sababo farsamo awgood.";
-            } catch (e) { return "System connection interrupted. Fadlan isku day markale."; }
+    const input =
+    document.getElementById('chat-input');
+
+    const container =
+    document.getElementById('chat-container');
+
+    const val = input.value.trim();
+
+    if(!val) return;
+
+    container.innerHTML += `
+    <div class="bg-cyan-500/10 border border-cyan-500/20 p-6 rounded-[2rem] rounded-tr-none text-sm text-right ml-auto max-w-[85%] text-white font-medium">
+        ${val}
+    </div>
+    `;
+
+    input.value = "";
+
+    const loadingId = "id-" + Date.now();
+
+    container.innerHTML += `
+    <div id="${loadingId}"
+    class="bg-white/5 p-6 rounded-[2rem] rounded-tl-none text-sm text-gray-500 animate-pulse">
+        Core is analyzing...
+    </div>
+    `;
+
+    container.scrollTop =
+    container.scrollHeight;
+
+    try {
+
+        const response = await fetch("/chat", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                message: val
+            })
+        });
+
+        const data = await response.json();
+
+        const loader =
+        document.getElementById(loadingId);
+
+        loader.classList.remove("animate-pulse");
+
+        loader.innerText = data.response;
+
+        container.scrollTop =
+        container.scrollHeight;
+
+    } catch (error) {
+
+        const loader =
+        document.getElementById(loadingId);
+
+        loader.classList.remove("animate-pulse");
+
+        loader.innerText =
+        "Connection error.";
+    }
+}
+
+async function analyzeImage(event) {
+
+    const file = event.target.files[0];
+
+    if(!file) return;
+
+    document.getElementById('result-area')
+    .classList.remove('hidden');
+
+    document.getElementById('analysis-text')
+    .innerText =
+    "Analyzing device architecture...";
+
+    const formData = new FormData();
+
+    formData.append("image", file);
+
+    try {
+
+        const response =
+        await fetch("/analyze-image", {
+
+            method: "POST",
+
+            body: formData
+        });
+
+        const data = await response.json();
+
+        document.getElementById('analysis-text')
+        .innerText = data.response;
+
+    } catch(error){
+
+        document.getElementById('analysis-text')
+        .innerText = "Image analysis failed.";
+    }
+}
+
+async function submitFeedback() {
+
+    const name =
+    document.getElementById('fb-name').value;
+
+    const email =
+    document.getElementById('fb-email').value;
+
+    const phone =
+    document.getElementById('fb-phone').value;
+
+    const message =
+    document.getElementById('fb-message').value;
+
+    if(!name || !email || !phone || !message){
+
+        alert(
+        "Fadlan buuxi dhammaan meelaha bannaan."
+        );
+
+        return;
+    }
+
+    try {
+
+        const response =
+        await fetch("/feedback", {
+
+            method: "POST",
+
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                name,
+                email,
+                phone,
+                message
+            })
+        });
+
+        const data = await response.json();
+
+        if(data.success){
+
+            document.getElementById(
+            'feedback-form'
+            ).style.display = 'none';
+
+            document.getElementById(
+            'feedback-success'
+            ).style.display = 'block';
         }
 
-        async function handleChat() {
-            const input = document.getElementById('chat-input');
-            const container = document.getElementById('chat-container');
-            const val = input.value.trim();
-            if(!val) return;
+    } catch(error){
 
-            container.innerHTML += `<div class="bg-cyan-500/10 border border-cyan-500/20 p-6 rounded-[2rem] rounded-tr-none text-sm text-right ml-auto max-w-[85%] text-white font-medium">${val}</div>`;
-            input.value = "";
-            container.scrollTop = container.scrollHeight;
+        alert("Failed to send feedback");
+    }
+}
 
-            const loadingId = "id-" + Date.now();
-            container.innerHTML += `<div id="${loadingId}" class="bg-white/5 p-6 rounded-[2rem] rounded-tl-none text-sm text-gray-500 animate-pulse">Core is analyzing your request...</div>`;
-            
-            const response = await callCore(val);
-            const loader = document.getElementById(loadingId);
-            loader.classList.remove('animate-pulse');
-            loader.innerText = response;
-            container.scrollTop = container.scrollHeight;
-        }
+function resetFeedback(){
 
-        async function analyzeImage(event) {
-            const file = event.target.files[0];
-            if(!file) return;
+    document.getElementById(
+    'fb-name').value = "";
 
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const base64 = e.target.result;
-                document.getElementById('result-area').classList.remove('hidden');
-                document.getElementById('analysis-text').innerText = "Analyzing device architecture and power consumption patterns...";
-                
-                const res = await callCore("Waa maxay qalabkani? Sidee korontadiisa loo badbaadin karaa? Sharaxaad dheeraad ah sii qof Soomaali ah oo raba inuu biilka dhimo.", true, base64);
-                document.getElementById('analysis-text').innerText = res;
-            };
-            reader.readAsDataURL(file);
-        }
+    document.getElementById(
+    'fb-email').value = "";
 
-        function submitFeedback() {
-            const name = document.getElementById('fb-name').value;
-            const email = document.getElementById('fb-email').value;
-            const phone = document.getElementById('fb-phone').value;
-            const message = document.getElementById('fb-message').value;
-            
-            if(!name || !message || !email || !phone) {
-                alert("Fadlan buuxi dhammaan meelaha bannaan (Magaca, Email-ka, Taleefanka, iyo Fariinta).");
-                return;
-            }
+    document.getElementById(
+    'fb-phone').value = "";
 
-            // Simulate the data transmission to the company email
-            const companyEmail = "eyetech.engineering2026@gmail.com";
-            console.log(`Sending to ${companyEmail}...`, { name, email, phone, message });
+    document.getElementById(
+    'fb-message').value = "";
 
-            // Visual feedback
-            document.getElementById('feedback-form').style.display = 'none';
-            document.getElementById('feedback-success').style.display = 'block';
-            
-            // In a real scenario, this would trigger an API call. 
-            // For now, we simulate a direct email intent:
-            // window.location.href = `mailto:${companyEmail}?subject=Feedback from ${name}&body=Name: ${name}%0D%0APhone: ${phone}%0D%0AEmail: ${email}%0D%0A%0D%0AMessage:%0D%0A${message}`;
-        }
+    document.getElementById(
+    'feedback-form'
+    ).style.display = 'grid';
 
-        function resetFeedback() {
-            document.getElementById('fb-name').value = "";
-            document.getElementById('fb-email').value = "";
-            document.getElementById('fb-phone').value = "";
-            document.getElementById('fb-message').value = "";
-            document.getElementById('feedback-form').style.display = 'grid';
-            document.getElementById('feedback-success').style.display = 'none';
-        }
+    document.getElementById(
+    'feedback-success'
+    ).style.display = 'none';
+}
 
-        function scrollToLab() {
-            document.getElementById('lab').scrollIntoView({ behavior: 'smooth' });
-        }
-    </script>
+function scrollToLab(){
+
+    document.getElementById('lab')
+    .scrollIntoView({
+        behavior: 'smooth'
+    });
+}
+
+</script>
 </body>
 </html>
