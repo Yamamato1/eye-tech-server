@@ -1,447 +1,477 @@
 <!DOCTYPE html>
-<html lang="so" class="scroll-smooth">
+<html lang="en" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EyeTech Pro | Energy Redefined</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EyeTech Pro | Dominate Your Energy</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
     <style>
         :root {
-            --primary: #00f2ff;
-            --secondary: #7000ff;
-            --bg: #030408;
+            --bg-dark: #0a0f1e;
+            --neon-cyan: #00f2ff;
+            --neon-purple: #bc13fe;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
         }
+
         body {
-            background-color: var(--bg);
-            color: #ffffff;
-            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Inter', sans-serif;
             overflow-x: hidden;
+            width: 100%;
         }
-        .liquid-glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(30px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+
+        /* Responsive Glassmorphism */
+        .glass {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
         }
-        .text-glow {
-            background: linear-gradient(135deg, #00f2ff 0%, #7000ff 100%);
+
+        @media (min-width: 768px) {
+            .glass { border-radius: 32px; }
+        }
+
+        .neon-text-cyan {
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+            color: var(--neon-cyan);
+        }
+
+        .gradient-text {
+            background: linear-gradient(90deg, #fff, var(--neon-cyan));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            filter: drop-shadow(0 0 15px rgba(0, 242, 255, 0.3));
         }
-        .hero-blob {
-            position: absolute;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(0, 242, 255, 0.15) 0%, transparent 70%);
-            filter: blur(60px);
+
+        .bg-glow {
+            position: fixed;
+            width: 40vw;
+            height: 40vw;
+            background: radial-gradient(circle, rgba(0, 242, 255, 0.1) 0%, transparent 70%);
             z-index: -1;
-            animation: move 20s infinite alternate;
+            filter: blur(60px);
+            pointer-events: none;
         }
-        @keyframes move {
-            from { transform: translate(-20%, -20%); }
-            to { transform: translate(20%, 20%); }
+
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
         }
-        .card-inner {
-            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-15px); }
         }
-        .card-inner:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: var(--primary);
+
+        .btn-premium {
+            background: linear-gradient(135deg, var(--neon-cyan), #00a2ff);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 15px rgba(0, 242, 255, 0.3);
+        }
+
+        .btn-premium:hover {
             transform: scale(1.02);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
         }
-        .btn-main {
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+
+        .reveal {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease-out;
         }
-        .btn-main::after {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            transition: 0.5s;
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
         }
-        .btn-main:hover::after { left: 100%; }
-        .custom-scroll::-webkit-scrollbar { width: 3px; }
-        .custom-scroll::-webkit-scrollbar-thumb { background: var(--primary); }
-        
-        .success-checkmark {
-            display: none;
-            animation: fadeIn 0.5s ease forwards;
+
+        #dashboard-overlay {
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.85, 0, 0.15, 1);
+            scrollbar-width: none;
         }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #dashboard-overlay::-webkit-scrollbar { display: none; }
+
+        #dashboard-overlay.active {
+            transform: translateY(0);
+        }
+
+        .chat-bubble-user {
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            border-radius: 18px 18px 0 18px;
+        }
+
+        .chat-bubble-ai {
+            background: rgba(188, 19, 254, 0.1);
+            border: 1px solid rgba(188, 19, 254, 0.2);
+            border-radius: 18px 18px 18px 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translate(-50%, 150%);
+            transition: transform 0.3s ease;
+            z-index: 1000;
+            width: calc(100% - 40px);
+            max-width: 400px;
+        }
+
+        .toast.active { transform: translate(-50%, 0); }
+
+        /* Mobile Adjustments */
+        @media (max-width: 640px) {
+            h1 { font-size: 3rem !important; }
+            .hero-btns { flex-direction: column; width: 100%; }
+            .hero-btns button, .hero-btns a { width: 100%; }
+        }
     </style>
 </head>
-<body class="custom-scroll">
-    <div class="hero-blob" style="top: 10%; left: 10%;"></div>
-    <div class="hero-blob" style="bottom: 10%; right: 10%; background: radial-gradient(circle, rgba(112, 0, 255, 0.15) 0%, transparent 70%);"></div>
+<body class="antialiased">
 
-    <!-- NAVIGATION -->
-    <nav class="fixed w-full z-50 px-6 py-8">
-        <div class="max-w-7xl mx-auto flex justify-between items-center liquid-glass rounded-3xl px-10 py-5">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 border-2 border-white/20 rounded-xl flex items-center justify-center rotate-45 group hover:rotate-90 transition-all duration-500">
-                    <div class="w-5 h-5 bg-cyan-400 rounded-sm -rotate-45"></div>
+    <!-- Loading State -->
+    <div id="loader" class="fixed inset-0 z-[9999] bg-[#0a0f1e] flex items-center justify-center">
+        <div class="relative">
+            <div class="w-16 h-16 border-2 border-cyan-500/20 rounded-full animate-ping"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-cyan-400 font-bold tracking-widest text-[10px]">EYETECH</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Background Glows -->
+    <div class="bg-glow top-0 left-0"></div>
+    <div class="bg-glow bottom-0 right-0 opacity-40" style="background: radial-gradient(circle, rgba(188, 19, 254, 0.1) 0%, transparent 70%);"></div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast glass p-4 flex items-center space-x-3 border-cyan-500/50">
+        <div class="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+        <p id="toast-message" class="text-sm font-medium"></p>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-4 md:px-8 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between glass px-6 py-3 border-white/5">
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center">
+                    <i data-lucide="eye" class="text-white w-5 h-5"></i>
                 </div>
-                <span class="text-2xl font-black tracking-tight">EYETECH <span class="text-cyan-400 font-light italic">CORE</span></span>
+                <span class="text-lg md:text-xl font-extrabold tracking-tighter gradient-text">EYETECH</span>
             </div>
-            <div class="hidden md:flex gap-10 text-[10px] font-extrabold uppercase tracking-[0.4em] opacity-60">
-                <a href="#vision" class="hover:text-cyan-400 transition-all">Vision</a>
-                <a href="#lab" class="hover:text-cyan-400 transition-all">Intelligence</a>
-                <a href="#about" class="hover:text-cyan-400 transition-all">Company</a>
-                <a href="#feedback" class="hover:text-cyan-400 transition-all">Feedback</a>
+            
+            <div class="hidden lg:flex items-center space-x-8 text-xs font-bold uppercase tracking-widest text-gray-400">
+                <a href="#about" class="hover:text-cyan-400 transition-colors">Mission</a>
+                <a href="#team" class="hover:text-cyan-400 transition-colors">Team</a>
+                <a href="#future" class="hover:text-cyan-400 transition-colors">Vision</a>
             </div>
-            <button onclick="scrollToLab()" class="btn-main px-8 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-black shadow-lg">
-                Terminal
+
+            <button onclick="toggleDashboard(true)" class="btn-premium px-5 py-2 rounded-full text-[10px] font-black text-black uppercase tracking-widest">
+                Launch AI
             </button>
         </div>
     </nav>
 
-    <!-- HERO -->
-    <section class="min-h-screen flex flex-col items-center justify-center text-center px-6 pt-20">
-        <div class="inline-flex items-center gap-2 px-4 py-2 liquid-glass rounded-full text-[10px] font-bold tracking-[0.2em] text-cyan-400 mb-10 border-cyan-500/20">
-            <span class="w-1.5 h-1.5 bg-cyan-500 rounded-full animate-ping"></span>
-            NEXT-GEN ENERGY INTELLIGENCE
+    <!-- Hero Section -->
+    <header class="relative pt-32 pb-20 px-6 min-h-screen flex flex-col items-center justify-center text-center overflow-hidden">
+        <div class="animate-float mb-8">
+            <span class="px-4 py-1.5 rounded-full glass border-cyan-500/30 text-cyan-400 text-[10px] font-bold uppercase tracking-widest inline-block">
+                Somali Innovation • AI Cloud
+            </span>
         </div>
-        <h1 class="text-7xl md:text-[140px] font-extrabold leading-[0.8] tracking-tighter mb-12">
-            ARAGTI <br> <span class="text-glow">CUSUB.</span>
+        <h1 class="text-5xl md:text-7xl lg:text-8xl font-extrabold tracking-tighter mb-6 leading-[1.1]">
+            DOMINATE YOUR <br> <span class="gradient-text">ENERGY BILLS</span>
         </h1>
-        <p class="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto mb-16 font-light leading-relaxed">
-            EyeTech Core waa nidaamka kowaad ee loogu talagalay in lagu <span class="text-white">xakameeyo korontada</span> Soomaaliya iyadoo la adeegsanayo indho dijital ah iyo sirdoon macmal ah.
+        <p class="max-w-2xl text-gray-400 text-base md:text-xl mb-10 leading-relaxed px-4">
+            The premium AI Energy Intelligence platform built for Mogadishu. Reduce your electricity costs by 40% using next-gen Vision AI.
         </p>
-        <div class="flex flex-col md:flex-row gap-6">
-            <button onclick="scrollToLab()" class="btn-main px-14 py-6 rounded-2xl text-lg font-black text-black hover:scale-105 transition-all shadow-2xl">BILOW SCAN-KA</button>
-            <a href="#vision" class="liquid-glass px-14 py-6 rounded-2xl text-lg font-bold hover:bg-white/5 transition-all border border-white/10">AKHRISO ROADMAP</a>
+        <div class="hero-btns flex flex-wrap justify-center gap-4 w-full max-w-md">
+            <button onclick="toggleDashboard(true)" class="btn-premium px-8 py-4 rounded-2xl text-black font-extrabold text-base flex items-center justify-center">
+                Launch AI <i data-lucide="zap" class="ml-2 w-5 h-5"></i>
+            </button>
+            <a href="#about" class="glass px-8 py-4 rounded-2xl font-bold text-base hover:bg-white/5 transition-all flex items-center justify-center border-white/10">
+                Our Story
+            </a>
+        </div>
+    </header>
+
+    <!-- Mission Section -->
+    <section id="about" class="py-20 px-6 max-w-7xl mx-auto reveal">
+        <div class="grid lg:grid-cols-2 gap-12 items-center">
+            <div class="order-2 lg:order-1">
+                <h2 class="text-3xl md:text-4xl font-extrabold mb-6 tracking-tight uppercase">WHO WE ARE</h2>
+                <div class="space-y-6 text-gray-400 leading-relaxed text-base md:text-lg">
+                    <p>
+                        Founded in 2025 in <span class="text-white font-bold">Mogadishu</span>, EyeTech Pro combines Somali talent with global technology experience. 
+                    </p>
+                    <p>
+                        Our founders studied both inside Somalia and internationally, creating a unique fusion of local insight and world-class AI research.
+                    </p>
+                </div>
+                <div class="mt-8 grid grid-cols-2 gap-4">
+                    <div class="glass p-5 border-cyan-500/10">
+                        <div class="text-2xl font-bold text-cyan-400">2025</div>
+                        <div class="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Inception</div>
+                    </div>
+                    <div class="glass p-5 border-purple-500/10">
+                        <div class="text-2xl font-bold text-purple-400">HQ</div>
+                        <div class="text-[10px] uppercase font-bold text-gray-500 tracking-widest">Mogadishu</div>
+                    </div>
+                </div>
+            </div>
+            <div class="order-1 lg:order-2">
+                <div class="glass aspect-video lg:aspect-square rounded-[30px] flex items-center justify-center overflow-hidden border-cyan-500/10 relative">
+                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-purple-500/5"></div>
+                    <i data-lucide="shield-check" class="w-20 md:w-32 h-20 md:h-32 text-cyan-400/30"></i>
+                </div>
+            </div>
         </div>
     </section>
 
-    <!-- BENTO GRID -->
-    <section id="vision" class="py-32 px-6 max-w-7xl mx-auto">
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
-            <!-- Card 1: Our Mission -->
-            <div class="md:col-span-8 liquid-glass p-12 rounded-[3rem] card-inner">
-                <div class="text-cyan-400 mb-6 flex gap-2">
-                    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-                    <span class="text-xs font-bold uppercase tracking-widest">Our Mission & Impact</span>
+    <!-- Team Section -->
+    <section id="team" class="py-20 px-4 max-w-7xl mx-auto">
+        <h2 class="text-3xl font-extrabold text-center mb-12 reveal uppercase tracking-tight">Our Team</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div class="glass p-6 text-center reveal border-white/5">
+                <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 mx-auto mb-4 flex items-center justify-center text-cyan-400">
+                    <i data-lucide="code-2"></i>
                 </div>
-                <h3 class="text-4xl md:text-5xl font-bold mb-8 tracking-tight leading-tight">Hadafka EyeTech Pro: <span class="opacity-50 font-light italic text-white">Xal u helista tamarta.</span></h3>
-                <p class="text-gray-400 text-lg leading-relaxed max-w-2xl mb-6">
-                    Waxaan dhiseynaa kaabayaal sirdoon oo falanqeynaya korontada guri kasta. Marka korontadu ay qali ka tahay Soomaaliya, xalku maahan oo kaliya dhalinta koronto, balse waa <strong>maareynta waxa gacanta lagu hayo.</strong>
-                </p>
-                <ul class="space-y-4 text-sm text-gray-300">
-                    <li class="flex items-start gap-3">
-                        <span class="w-1.5 h-1.5 bg-cyan-500 rounded-full mt-1.5"></span>
-                        <span>Falanqayn Joogto ah: Core wuxuu la socdaa qalab kasta oo koronto isticmaalaya 24/7.</span>
-                    </li>
-                    <li class="flex items-start gap-3">
-                        <span class="w-1.5 h-1.5 bg-cyan-500 rounded-full mt-1.5"></span>
-                        <span>Dhimista Biilka: Hiigsigeenu waa inaan hoos u dhigno 40% ilaa 60% kharashka bishii.</span>
-                    </li>
-                </ul>
+                <h4 class="font-bold">AI Engineers</h4>
+                <p class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">Mogadishu Hub</p>
             </div>
+            <div class="glass p-6 text-center reveal border-white/5" style="transition-delay: 0.1s;">
+                <div class="w-16 h-16 rounded-2xl bg-purple-500/10 mx-auto mb-4 flex items-center justify-center text-purple-400">
+                    <i data-lucide="cpu"></i>
+                </div>
+                <h4 class="font-bold">IoT Experts</h4>
+                <p class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">Hardware Lab</p>
+            </div>
+            <div class="glass p-6 text-center reveal border-white/5" style="transition-delay: 0.2s;">
+                <div class="w-16 h-16 rounded-2xl bg-orange-500/10 mx-auto mb-4 flex items-center justify-center text-orange-400">
+                    <i data-lucide="palette"></i>
+                </div>
+                <h4 class="font-bold">UI Designers</h4>
+                <p class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">Experience Team</p>
+            </div>
+            <div class="glass p-6 text-center reveal border-white/5" style="transition-delay: 0.3s;">
+                <div class="w-16 h-16 rounded-2xl bg-green-500/10 mx-auto mb-4 flex items-center justify-center text-green-400">
+                    <i data-lucide="database"></i>
+                </div>
+                <h4 class="font-bold">Researchers</h4>
+                <p class="text-xs text-gray-500 mt-1 uppercase tracking-widest font-bold">Energy Data</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Waitlist Section -->
+    <section id="waitlist-section" class="py-20 px-4 max-w-3xl mx-auto reveal">
+        <div class="glass p-8 md:p-12 text-center border-white/10 relative overflow-hidden">
+            <h2 class="text-3xl font-extrabold mb-4 uppercase tracking-tight">JOIN THE FUTURE</h2>
+            <p class="text-gray-400 mb-10 text-sm md:text-base">Secure your spot in the EyeTech Pro ecosystem.</p>
             
-            <!-- Card 2: Stat -->
-            <div class="md:col-span-4 liquid-glass p-12 rounded-[3rem] card-inner flex flex-col justify-center text-center">
-                <span class="text-6xl font-black text-glow mb-2 tracking-tighter">40%</span>
-                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">Energy Saving Avg</span>
-                <p class="text-xs text-gray-400">Celcelis ahaan badbaadinta korontada ee qoys walba.</p>
-            </div>
+            <form id="waitlist-form" class="space-y-4 text-left">
+                <input type="text" placeholder="Full Name" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all text-white text-sm" required>
+                <input type="email" placeholder="Email Address" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-all text-white text-sm" required>
+                <button type="submit" class="btn-premium w-full py-4 rounded-xl text-black font-extrabold text-base uppercase tracking-widest">
+                    Get Early Access
+                </button>
+            </form>
 
-            <!-- Card 3: Deep Vision -->
-            <div class="md:col-span-4 liquid-glass p-12 rounded-[3rem] card-inner">
-                <h4 class="text-2xl font-bold mb-4">Core Vision Analysis</h4>
-                <p class="text-sm text-gray-500 leading-relaxed italic mb-4">"Waa maxay tignoolajiyada ka dambaysa Scanner-ka?"</p>
-                <p class="text-xs text-gray-300 leading-relaxed">
-                    Scanner-ka EyeTech wuxuu isticmaalaa <strong>Computer Vision</strong> si uu u aqoonsado qalabka elektaroonigga ah iyo moodalkooda, isagoo markaas kadib xisaabinaya tamarta ay u baahan yihiin iyo halka ay kaga jiraan biilkaaga.
-                </p>
-            </div>
-
-            <!-- Card 4: Somali Language & Accessibility -->
-            <div class="md:col-span-8 liquid-glass p-12 rounded-[3rem] card-inner flex items-center justify-between overflow-hidden group relative">
-                <div class="relative z-10 max-w-md">
-                    <h4 class="text-3xl font-bold mb-3">Luuqadda Soomaali & Helitaanka</h4>
-                    <p class="text-gray-400 text-sm mb-4">Nidaamkan waxaa loo dhisay si uu ula xiriiro bulshada Soomaaliyeed isagoo adeegsanaya afka hooyo, si qof walba u fahmo fariimaha Core.</p>
-                    <div class="flex gap-3">
-                        <span class="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-cyan-400">MAX-SPEED</span>
-                        <span class="px-3 py-1 bg-white/5 rounded-lg text-[10px] font-bold text-purple-400">OFFLINE-FIRST</span>
-                    </div>
-                </div>
-                <div class="text-cyan-500/10 group-hover:text-cyan-500/40 transition-all duration-700 absolute right-[-20px] bottom-[-20px]">
-                    <svg width="200" height="200" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14h2v2h-2v-2zm0-10h2v8h-2V6z"/></svg>
-                </div>
+            <div id="waitlist-success" class="hidden py-10">
+                <i data-lucide="check-circle" class="text-green-500 w-16 h-16 mx-auto mb-4"></i>
+                <h3 class="text-xl font-bold">You're on the list!</h3>
             </div>
         </div>
     </section>
 
-    <!-- ABOUT COMPANY SECTION -->
-    <section id="about" class="py-32 px-6 bg-gradient-to-b from-transparent to-cyan-900/10">
-        <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-20 items-center">
-            <div>
-                <h2 class="text-5xl font-black mb-8">Waa ku weeye <br><span class="text-glow">EyeTech Engineering?</span></h2>
-                <p class="text-gray-300 text-lg leading-relaxed mb-8">
-                    EyeTech Pro maahan kaliya software, waa shirkad injineernimo oo fadhigeedu yahay Soomaaliya, hiigsigeeduna yahay in ay beddesho sida looga fikiro tamarta. Waxaan isku xirnaa <strong>Sirdoonka Macmalka ah (AI)</strong> iyo <strong>Injineernimada Korontada</strong> si aan u dhisno nidaamyo caqli badan.
-                </p>
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="p-6 liquid-glass rounded-2xl border-l-4 border-cyan-400">
-                        <h5 class="font-bold text-white mb-2">Tayada Sare</h5>
-                        <p class="text-xs text-gray-500">Waxaan isticmaalnaa hababka ugu casrisan ee aduunka.</p>
-                    </div>
-                    <div class="p-6 liquid-glass rounded-2xl border-l-4 border-purple-400">
-                        <h5 class="font-bold text-white mb-2">Amaan Buuxa</h5>
-                        <p class="text-xs text-gray-500">Xogtaada iyo aqalkaagu waa kuwo nabadgal ku jira.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="relative">
-                <div class="absolute -inset-10 bg-cyan-500/20 blur-[100px] rounded-full"></div>
-                <div class="relative liquid-glass p-10 rounded-[3rem] border-white/10">
-                    <h4 class="text-2xl font-bold mb-6 text-cyan-400 underline underline-offset-8">Maxaad noo dooranaysaa?</h4>
-                    <ul class="space-y-6">
-                        <li class="flex gap-4">
-                            <div class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center shrink-0 text-cyan-400 italic">01</div>
-                            <p class="text-sm text-gray-400 leading-relaxed"><strong class="text-white">Aqoon Maxalli ah:</strong> Waxaan si dhab ah u naqaanaa dhibaatada korontada ee Soomaaliya, waxaana u haynaa xal u gaar ah dalka.</p>
-                        </li>
-                        <li class="flex gap-4">
-                            <div class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center shrink-0 text-cyan-400 italic">02</div>
-                            <p class="text-sm text-gray-400 leading-relaxed"><strong class="text-white">Badbaadin Toos ah:</strong> Talooyinka Core maahan kaliya hadal, waa xisaab cilmiyeysan oo biilkaaga hoos u dhigaysa bishaba.</p>
-                        </li>
-                        <li class="flex gap-4">
-                            <div class="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center shrink-0 text-cyan-400 italic">03</div>
-                            <p class="text-sm text-gray-400 leading-relaxed"><strong class="text-white">Taageero 24/7:</strong> Injineeradayada iyo AI-ga EyeTech waxay diyaar kuu yihiin markasta oo aad u baahato.</p>
-                        </li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-    </section>
+    <!-- DASHBOARD OVERLAY -->
+    <div id="dashboard-overlay" class="fixed inset-0 z-[100] bg-[#0a0f1e] overflow-y-auto px-4 py-20 md:py-24">
+        <button onclick="toggleDashboard(false)" class="fixed top-6 right-6 z-[110] glass w-10 h-10 flex items-center justify-center rounded-full border-white/20">
+            <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
 
-    <!-- CORE LAB (TERMINAL) -->
-    <section id="lab" class="py-32 px-6">
-        <div class="max-w-6xl mx-auto">
-            <div class="liquid-glass rounded-[4rem] overflow-hidden flex flex-col lg:flex-row border-white/5 shadow-inner">
-                <!-- Vision Scan -->
-                <div class="lg:w-1/2 p-12 md:p-16 border-b lg:border-b-0 lg:border-r border-white/5">
-                    <div class="flex items-center gap-3 mb-12">
-                        <div class="flex gap-1.5">
-                            <div class="w-2 h-2 rounded-full bg-white/20"></div>
-                            <div class="w-2 h-2 rounded-full bg-white/20"></div>
+        <div class="max-w-7xl mx-auto">
+            <div class="mb-10 text-center md:text-left">
+                <h2 class="text-3xl font-extrabold gradient-text tracking-tight uppercase">AI DASHBOARD</h2>
+                <p class="text-gray-500 text-xs font-bold tracking-widest uppercase mt-1">Real-time Intelligence</p>
+            </div>
+
+            <div class="grid lg:grid-cols-12 gap-6 md:gap-8 items-start">
+                <!-- Left: Tools -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="glass p-6 md:p-8 border-cyan-500/10">
+                        <div class="flex items-center mb-6">
+                            <i data-lucide="camera" class="text-cyan-400 mr-3 w-5 h-5"></i>
+                            <h3 class="text-lg font-bold uppercase tracking-wide">Vision Analyzer</h3>
                         </div>
-                        <span class="text-[10px] font-black tracking-[0.3em] text-cyan-400 uppercase">Core Visualizer</span>
-                    </div>
-                    
-                    <h3 class="text-3xl font-bold mb-6">Scan Device <span class="font-light italic opacity-50">v2.0</span></h3>
-                    <p class="text-gray-500 text-xs mb-10 leading-relaxed uppercase tracking-wider font-bold">Tiknoolajiyada indhaha dijital ah ee aqoonsiga qalabka.</p>
-                    
-                    <div class="space-y-10">
-                        <div onclick="document.getElementById('file-in').click()" class="relative group cursor-pointer">
-                            <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-[2.5rem] blur opacity-10 group-hover:opacity-30 transition-all"></div>
-                            <div class="relative bg-black/40 border-2 border-dashed border-white/10 rounded-[2.5rem] p-16 text-center hover:border-cyan-400/50 transition-all">
-                                <input type="file" id="file-in" class="hidden" accept="image/*" onchange="analyzeImage(event)">
-                                <div class="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-6">
-                                    <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7m4 0h6v6m-11 5L21 3"/></svg>
+                        <div id="drop-zone" class="border-2 border-dashed border-white/10 rounded-2xl p-8 md:p-12 text-center cursor-pointer hover:border-cyan-500/50 transition-all">
+                            <i data-lucide="upload" class="mx-auto mb-4 text-gray-500"></i>
+                            <p class="text-sm text-gray-400">Upload appliance photo</p>
+                        </div>
+
+                        <div id="analysis-result" class="hidden mt-8 p-6 bg-cyan-500/5 rounded-2xl border border-cyan-500/20">
+                            <div class="flex justify-between items-start mb-4">
+                                <h4 id="res-name" class="text-xl font-bold">Analyzing...</h4>
+                                <span class="bg-cyan-500 text-black text-[10px] font-black px-2 py-0.5 rounded">AI READY</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="glass p-4 border-white/5">
+                                    <div class="text-[10px] text-gray-500 uppercase font-bold">Wattage</div>
+                                    <div id="res-watt" class="text-lg font-bold">--</div>
                                 </div>
-                                <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Geli sawirka qalabka korontada</p>
-                            </div>
-                        </div>
-
-                        <div id="result-area" class="hidden animate-in fade-in slide-in-from-bottom-5">
-                            <div class="p-8 rounded-3xl bg-white/5 border border-cyan-400/20">
-                                <p class="text-[10px] font-bold text-cyan-500 uppercase tracking-[0.4em] mb-4">Core Insights Report:</p>
-                                <p id="analysis-text" class="text-sm text-gray-300 leading-relaxed font-medium italic"></p>
+                                <div class="glass p-4 border-white/5">
+                                    <div class="text-[10px] text-gray-500 uppercase font-bold">Cost/Mo</div>
+                                    <div id="res-cost" class="text-lg font-bold">--</div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Chat Terminal -->
-                <div class="lg:w-1/2 p-12 md:p-16 flex flex-col bg-white/[0.01]">
-                    <h3 class="text-3xl font-bold mb-10 tracking-tight">Interactive <span class="text-cyan-400 italic">Terminal</span></h3>
-                    
-                    <div id="chat-container" class="flex-grow h-96 overflow-y-auto space-y-6 mb-10 pr-4 custom-scroll">
-                        <div class="bg-white/5 p-6 rounded-[2rem] rounded-tl-none text-sm text-gray-400 leading-relaxed border border-white/5">
-                            Salaam! Waxaan ahay <strong>EyeTech Core</strong>. Sideen kaa caawin karaa maanta si biilkaaga korontada uusan ugu dhamaan si lama filaan ah? ✨
+                    <div class="glass p-6 md:p-8 border-purple-500/10">
+                        <div class="flex items-center mb-6">
+                            <i data-lucide="calculator" class="text-purple-400 mr-3 w-5 h-5"></i>
+                            <h3 class="text-lg font-bold uppercase tracking-wide">Manual Estimator</h3>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="number" id="calc-watts" placeholder="Watts (e.g. 1500)" class="bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-purple-500/50 text-white text-sm">
+                            <input type="number" id="calc-hours" placeholder="Hours/Day" class="bg-white/5 border border-white/10 p-4 rounded-xl focus:outline-none focus:border-purple-500/50 text-white text-sm">
+                        </div>
+                        <div class="mt-6 flex justify-between items-center px-2">
+                            <span class="text-xs font-bold text-gray-500 uppercase">Monthly Total:</span>
+                            <span id="out-monthly" class="text-2xl font-black text-cyan-400">$0.00</span>
                         </div>
                     </div>
+                </div>
 
-                    <div class="relative">
-                        <input type="text" id="chat-input" placeholder="Weydii Core (Tusaale: Sideen u dhimaa biilka Talaagada?)..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-8 py-5 focus:outline-none focus:border-cyan-400 transition-all text-sm font-medium pr-16" onkeypress="if(event.key==='Enter') handleChat()">
-                        <button onclick="handleChat()" class="absolute right-3 top-3 bg-white text-black p-4 rounded-xl hover:bg-cyan-400 transition-all active:scale-90 shadow-lg">
-                            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                <!-- Right: Chat -->
+                <div class="lg:col-span-5 h-[500px] md:h-[650px] flex flex-col glass border-white/10 overflow-hidden">
+                    <div class="p-5 border-b border-white/10 bg-white/5 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
+                                <i data-lucide="bot" class="w-4 h-4"></i>
+                            </div>
+                            <span class="font-bold text-sm">EyeTech Assistant</span>
+                        </div>
+                        <span class="text-[9px] font-black bg-green-500/10 text-green-400 px-2 py-0.5 rounded-full uppercase tracking-widest">Live</span>
+                    </div>
+                    <div id="chat-box" class="flex-grow overflow-y-auto p-5 space-y-4">
+                        <div class="chat-bubble-ai p-4 max-w-[90%] text-sm leading-relaxed">
+                            Ascamaaleykum! Waxaan ahay EyeTech AI. Sideen kuu caawin karaa maanta?
+                        </div>
+                    </div>
+                    <form id="chat-form" class="p-4 border-t border-white/10 flex space-x-2">
+                        <input type="text" id="chat-input" placeholder="Weydii wax kasta..." class="flex-grow bg-white/5 border border-white/10 p-3 rounded-xl focus:outline-none focus:border-cyan-500/50 text-white text-sm">
+                        <button class="bg-cyan-500 w-12 h-12 rounded-xl flex items-center justify-center text-black">
+                            <i data-lucide="send" class="w-5 h-5"></i>
                         </button>
-                    </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </section>
+    </div>
 
-    <!-- FEEDBACK SECTION -->
-    <section id="feedback" class="py-32 px-6">
-        <div class="max-w-4xl mx-auto liquid-glass p-12 md:p-16 rounded-[4rem] border-white/5 relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-12 opacity-5">
-                <svg width="200" height="200" fill="currentColor" viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-            </div>
-            
-            <div class="relative z-10">
-                <div class="text-center mb-12">
-                    <h2 class="text-4xl font-bold mb-4 uppercase tracking-tighter">Nala <span class="text-cyan-400">Xiriir</span></h2>
-                    <p class="text-gray-400 text-sm">Fariintaadu waxay si toos ah u gaaraysaa maamulka sare ee EyeTech Engineering.</p>
-                </div>
-                
-                <div id="feedback-form" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="space-y-6">
-                        <input type="text" id="fb-name" placeholder="Magacaaga oo buuxa" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:border-cyan-400 outline-none transition-all text-sm">
-                        <input type="email" id="fb-email" placeholder="Email-kaaga" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:border-cyan-400 outline-none transition-all text-sm">
-                        <input type="tel" id="fb-phone" placeholder="Lambarka taleefanka (Tusaale: 061...)" class="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:border-cyan-400 outline-none transition-all text-sm">
-                    </div>
-                    <div class="flex flex-col gap-6">
-                        <textarea id="fb-message" placeholder="Maxaad naga dhihi lahayd ama maxaa talo ah oo aad haysaa?" class="w-full flex-grow bg-white/5 border border-white/10 rounded-2xl px-6 py-4 focus:border-cyan-400 outline-none transition-all text-sm min-h-[150px]"></textarea>
-                        <button onclick="submitFeedback()" class="btn-main w-full py-5 rounded-2xl font-black text-black uppercase tracking-widest text-xs shadow-xl hover:scale-[1.02] active:scale-95 transition-all">
-                            DIR FARIINTA TOOSKA AH
-                        </button>
-                    </div>
-                </div>
-
-                <div id="feedback-success" class="success-checkmark py-10 text-center">
-                    <div class="w-24 h-24 bg-cyan-400/20 rounded-full flex items-center justify-center mx-auto mb-8 animate-bounce">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#00f2ff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
-                    </div>
-                    <h4 class="text-3xl font-bold mb-4">Waa la gudbiyay!</h4>
-                    <p class="text-gray-400 max-w-md mx-auto leading-relaxed">Fariintaada waa la xaqiijiyay. Shirkadda <strong>EyeTech Engineering</strong> waxay ku heli doontaa Email-ka `eyetech.engineering2026@gmail.com`. Injineeradayada ayaa dib kuugu soo xiriiri doona.</p>
-                    <button onclick="resetFeedback()" class="mt-10 px-8 py-3 bg-white/5 rounded-xl text-cyan-400 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all">Dir fariin kale</button>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- FOOTER -->
-    <footer class="py-20 text-center border-t border-white/5 bg-black/50">
-        <div class="max-w-7xl mx-auto px-6">
-            <div class="flex flex-col md:flex-row justify-between items-center gap-10 mb-16">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-cyan-400 rounded-lg rotate-45"></div>
-                    <span class="text-xl font-black tracking-tighter">EYETECH CORE</span>
-                </div>
-                <div class="flex gap-12">
-                    <div class="text-left">
-                        <p class="text-[10px] font-black text-cyan-400 uppercase tracking-widest mb-2">Office Email</p>
-                        <p class="text-sm font-medium text-gray-400">eyetech.engineering2026@gmail.com</p>
-                    </div>
-                    <div class="text-left">
-                        <p class="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">Location</p>
-                        <p class="text-sm font-medium text-gray-400">Mogadishu, Somalia</p>
-                    </div>
-                </div>
-            </div>
-            <div class="pt-10 border-t border-white/5 text-[10px] font-bold text-gray-700 uppercase tracking-[0.6em]">
-                &copy; 2026 EyeTech Engineering Pro • All Rights Reserved
-            </div>
-        </div>
-    </footer>
-
+    <!-- Scripts -->
     <script>
-        const apiKey = ""; // System provided
+        const SOMALI_RATE = 0.35;
 
-        async function callCore(prompt, isImage = false, imageData = null) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
-            const contents = [{ parts: [{ text: prompt }] }];
+        window.onload = () => {
+            lucide.createIcons();
+            setTimeout(() => {
+                document.getElementById('loader').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+                reveal();
+            }, 800);
+        };
 
-            if (isImage && imageData) {
-                contents[0].parts.push({
-                    inlineData: { mimeType: "image/png", data: imageData.split(',')[1] }
-                });
-            }
+        function reveal() {
+            const reveals = document.querySelectorAll('.reveal');
+            reveals.forEach(el => {
+                const top = el.getBoundingClientRect().top;
+                if (top < window.innerHeight - 50) el.classList.add('active');
+            });
+        }
+        window.onscroll = reveal;
 
-            try {
-                const res = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents,
-                        systemInstruction: {
-                            parts: [{ text: "Waxaad tahay EyeTech Core, sirdoonka rasmiga ah ee EyeTech Pro Somalia. Hadalkaaga oo dhan waa Soomaali. Marna ha sheegin magac kale oo AI ah. U sharax dadka sida cilmiyeysan ee ay korontada u badbaadin karaan. Noqo mid caqli badan, casri ah, oo Soomaali ah. Haddii qofku ku weydiiyo biilka, u sheeg in xalku yahay fahamka awoodda (Watts) ee qalab kasta." }]
-                        }
-                    })
-                });
-                const data = await res.json();
-                return data.candidates?.[0]?.content?.parts?.[0]?.text || "Raalli ahow, fariintaada hadda ma falanqeyn karo sababo farsamo awgood.";
-            } catch (e) { return "System connection interrupted. Fadlan isku day markale."; }
+        function toggleDashboard(show) {
+            const d = document.getElementById('dashboard-overlay');
+            d.classList.toggle('active', show);
+            document.body.style.overflow = show ? 'hidden' : 'auto';
         }
 
-        async function handleChat() {
-            const input = document.getElementById('chat-input');
-            const container = document.getElementById('chat-container');
-            const val = input.value.trim();
+        // Calculator
+        const wIn = document.getElementById('calc-watts');
+        const hIn = document.getElementById('calc-hours');
+        const mOut = document.getElementById('out-monthly');
+
+        function calc() {
+            const w = parseFloat(wIn.value) || 0;
+            const h = parseFloat(hIn.value) || 0;
+            const monthly = ((w * h) / 1000) * 30 * SOMALI_RATE;
+            mOut.innerText = `$${monthly.toFixed(2)}`;
+        }
+        [wIn, hIn].forEach(i => i.oninput = calc);
+
+        // Chat
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatBox = document.getElementById('chat-box');
+
+        chatForm.onsubmit = (e) => {
+            e.preventDefault();
+            const val = chatInput.value.trim();
             if(!val) return;
 
-            container.innerHTML += `<div class="bg-cyan-500/10 border border-cyan-500/20 p-6 rounded-[2rem] rounded-tr-none text-sm text-right ml-auto max-w-[85%] text-white font-medium">${val}</div>`;
-            input.value = "";
-            container.scrollTop = container.scrollHeight;
+            const uMsg = document.createElement('div');
+            uMsg.className = 'chat-bubble-user p-4 max-w-[90%] ml-auto text-sm';
+            uMsg.innerText = val;
+            chatBox.appendChild(uMsg);
+            chatInput.value = '';
+            chatBox.scrollTop = chatBox.scrollHeight;
 
-            const loadingId = "id-" + Date.now();
-            container.innerHTML += `<div id="${loadingId}" class="bg-white/5 p-6 rounded-[2rem] rounded-tl-none text-sm text-gray-500 animate-pulse">Core is analyzing your request...</div>`;
-            
-            const response = await callCore(val);
-            const loader = document.getElementById(loadingId);
-            loader.classList.remove('animate-pulse');
-            loader.innerText = response;
-            container.scrollTop = container.scrollHeight;
+            setTimeout(() => {
+                const aMsg = document.createElement('div');
+                aMsg.className = 'chat-bubble-ai p-4 max-w-[90%] text-sm';
+                aMsg.innerText = "Hadda ayaan baadhayaa xogtaas. Ma rabtaa inaan kuu xisaabiyo kharashka qalabkaaga?";
+                chatBox.appendChild(aMsg);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }, 1000);
+        };
+
+        // Image Analysis Simulation
+        document.getElementById('drop-zone').onclick = () => {
+            showToast("Simulating AI Vision Analysis...");
+            setTimeout(() => {
+                document.getElementById('analysis-result').classList.remove('hidden');
+                document.getElementById('res-name').innerText = "Smart AC Unit";
+                document.getElementById('res-watt').innerText = "2200W";
+                document.getElementById('res-cost').innerText = "$231.00";
+            }, 1500);
+        };
+
+        function showToast(m) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = m;
+            t.classList.add('active');
+            setTimeout(() => t.classList.remove('active'), 3000);
         }
 
-        async function analyzeImage(event) {
-            const file = event.target.files[0];
-            if(!file) return;
-
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const base64 = e.target.result;
-                document.getElementById('result-area').classList.remove('hidden');
-                document.getElementById('analysis-text').innerText = "Analyzing device architecture and power consumption patterns...";
-                
-                const res = await callCore("Waa maxay qalabkani? Sidee korontadiisa loo badbaadin karaa? Sharaxaad dheeraad ah sii qof Soomaali ah oo raba inuu biilka dhimo.", true, base64);
-                document.getElementById('analysis-text').innerText = res;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function submitFeedback() {
-            const name = document.getElementById('fb-name').value;
-            const email = document.getElementById('fb-email').value;
-            const phone = document.getElementById('fb-phone').value;
-            const message = document.getElementById('fb-message').value;
-            
-            if(!name || !message || !email || !phone) {
-                alert("Fadlan buuxi dhammaan meelaha bannaan (Magaca, Email-ka, Taleefanka, iyo Fariinta).");
-                return;
-            }
-
-            // Simulate the data transmission to the company email
-            const companyEmail = "eyetech.engineering2026@gmail.com";
-            console.log(`Sending to ${companyEmail}...`, { name, email, phone, message });
-
-            // Visual feedback
-            document.getElementById('feedback-form').style.display = 'none';
-            document.getElementById('feedback-success').style.display = 'block';
-            
-            // In a real scenario, this would trigger an API call. 
-            // For now, we simulate a direct email intent:
-            // window.location.href = `mailto:${companyEmail}?subject=Feedback from ${name}&body=Name: ${name}%0D%0APhone: ${phone}%0D%0AEmail: ${email}%0D%0A%0D%0AMessage:%0D%0A${message}`;
-        }
-
-        function resetFeedback() {
-            document.getElementById('fb-name').value = "";
-            document.getElementById('fb-email').value = "";
-            document.getElementById('fb-phone').value = "";
-            document.getElementById('fb-message').value = "";
-            document.getElementById('feedback-form').style.display = 'grid';
-            document.getElementById('feedback-success').style.display = 'none';
-        }
-
-        function scrollToLab() {
-            document.getElementById('lab').scrollIntoView({ behavior: 'smooth' });
-        }
+        // Waitlist
+        document.getElementById('waitlist-form').onsubmit = (e) => {
+            e.preventDefault();
+            document.getElementById('waitlist-form').classList.add('hidden');
+            document.getElementById('waitlist-success').classList.remove('hidden');
+            showToast("Welcome to EyeTech Pro!");
+        };
     </script>
 </body>
 </html>
