@@ -27,7 +27,7 @@ client = OpenAI(
 
 resend.api_key = os.getenv("RESEND_API_KEY")
 
-COMPANY_EMAIL = os.getenv("COMPANY_EMAIL")
+COMPANY_EMAIL = "Eyetech.engineering2026@gmail.com"
 
 # =====================================================
 # HOME PAGE
@@ -307,7 +307,6 @@ def calculate():
         wattage = float(data.get("wattage"))
         hours = float(data.get("hours"))
 
-        # Somalia estimated electricity price
         price_per_kwh = 0.35
 
         daily_kwh = (wattage * hours) / 1000
