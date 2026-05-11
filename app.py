@@ -27,8 +27,6 @@ client = OpenAI(
 
 resend.api_key = os.getenv("RESEND_API_KEY")
 
-COMPANY_EMAIL = "Eyetech.engineering2026@gmail.com"
-
 # =====================================================
 # HOME PAGE
 # =====================================================
@@ -66,15 +64,19 @@ def waitlist():
         whatsapp = data.get("whatsapp")
         feedback = data.get("feedback")
 
+        print("NEW WAITLIST USER:")
+        print(name)
+        print(email)
+
         # =================================================
-        # SEND EMAIL TO COMPANY
+        # SEND EMAIL TO COMPANY ONLY
         # =================================================
 
-        resend.Emails.send({
+        response = resend.Emails.send({
 
             "from": "onboarding@resend.dev",
 
-            "to": COMPANY_EMAIL,
+            "to": "Eyetech.engineering2026@gmail.com",
 
             "subject": f"New Waitlist User - {name}",
 
@@ -100,43 +102,8 @@ def waitlist():
 
         })
 
-        # =================================================
-        # SEND CONFIRMATION EMAIL TO USER
-        # =================================================
-
-        resend.Emails.send({
-
-            "from": "onboarding@resend.dev",
-
-            "to": email,
-
-            "subject": "Welcome to EyeTech Pro",
-
-            "html": f"""
-
-            <div style="font-family:Arial;padding:20px;background:#0a0f1e;color:white;">
-
-                <h1 style="color:#22d3ee;">
-                    Mahadsanid {name}
-                </h1>
-
-                <p>
-                    Waad ku mahadsan tahay inaad ku biirtay EyeTech Pro.
-                </p>
-
-                <p>
-                    Waxaan dhiseynaa mustaqbalka AI-ga Soomaaliya.
-                </p>
-
-                <p>
-                    Waxaan kula soo xiriiri doonaa marka nidaamka la bilaabo.
-                </p>
-
-            </div>
-
-            """
-
-        })
+        print("EMAIL RESPONSE:")
+        print(response)
 
         return jsonify({
             "success": True,
