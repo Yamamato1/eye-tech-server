@@ -3,613 +3,366 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EyeTech Pro | AI Energy Intelligence</title>
-
+    <title>EyeTech Pro | Somalia AI Energy Platform</title>
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;700;800&display=swap" rel="stylesheet">
     <style>
-
-        :root{
-            --neon-blue:#00f2ff;
-            --neon-purple:#7000ff;
-            --glass-bg:rgba(10,10,12,0.7);
-            --glass-border:rgba(255,255,255,0.1);
-        }
-
         body{
             font-family:'Plus Jakarta Sans',sans-serif;
-            background:#050505;
+            background:#050816;
             color:white;
             overflow-x:hidden;
-            scroll-behavior:smooth;
         }
-
         .glass{
-            background:var(--glass-bg);
+            background:rgba(255,255,255,0.05);
             backdrop-filter:blur(12px);
-            border:1px solid var(--glass-border);
-            border-radius:24px;
+            border:1px solid rgba(255,255,255,0.08);
         }
-
-        .gradient-bg{
+        .gradient{
+            background:linear-gradient(90deg,#00f0ff,#7c3aed);
+            -webkit-background-clip:text;
+            -webkit-text-fill-color:transparent;
+        }
+        .hero-bg{
             background:
-            radial-gradient(circle at 20% 20%,rgba(0,242,255,0.12),transparent 30%),
-            radial-gradient(circle at 80% 80%,rgba(112,0,255,0.15),transparent 30%),
-            #050505;
+            radial-gradient(circle at top left,#00f0ff33,transparent 30%),
+            radial-gradient(circle at bottom right,#7c3aed33,transparent 30%);
         }
-
-        .tab-active{
-            background:rgba(255,255,255,0.08);
-            border:1px solid rgba(0,242,255,0.3);
-            color:#00f2ff;
-        }
-
-        .scroll-hide::-webkit-scrollbar{
+        .chat-scroll::-webkit-scrollbar{
             display:none;
         }
-
-        .chat-user{
-            background:rgba(0,242,255,0.15);
-            border:1px solid rgba(0,242,255,0.2);
-            border-radius:18px 18px 0 18px;
-        }
-
-        .chat-ai{
-            background:rgba(255,255,255,0.05);
-            border:1px solid rgba(255,255,255,0.08);
-            border-radius:18px 18px 18px 0;
-        }
-
-        .floating{
-            animation:float 4s ease-in-out infinite;
-        }
-
-        @keyframes float{
-            0%{transform:translateY(0px);}
-            50%{transform:translateY(-10px);}
-            100%{transform:translateY(0px);}
-        }
-
     </style>
 </head>
-
-<body class="gradient-bg">
-
+<body class="hero-bg">
 <!-- NAVBAR -->
-
-<nav class="fixed top-0 w-full z-50 px-6 py-4">
-
-    <div class="max-w-7xl mx-auto glass px-6 py-4 flex justify-between items-center">
-
+<nav class="fixed top-0 w-full z-50 p-4">
+    <div class="glass max-w-7xl mx-auto rounded-2xl px-6 py-4 flex justify-between items-center">
         <div class="flex items-center gap-3">
-
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-purple-600 flex items-center justify-center">
-                <i class="fa-solid fa-bolt text-black"></i>
-            </div>
-
+            <div class="w-10 h-10 rounded-xl bg-cyan-400"></div>
             <div>
-                <h1 class="font-black text-xl">
+                <h1 class="font-black text-2xl">
                     EYETECH <span class="text-cyan-400">PRO</span>
                 </h1>
-
-                <p class="text-[10px] uppercase tracking-[0.3em] text-gray-500">
-                    Somalia AI Energy
+                <p class="text-xs text-gray-400">
+                    Mogadishu • Somalia
                 </p>
             </div>
-
         </div>
-
-        <button
-        onclick="toggleDashboard()"
-        class="bg-cyan-400 text-black px-5 py-3 rounded-xl font-bold hover:bg-cyan-300 transition">
-            Launch App
+        <button onclick="openDashboard()"
+        class="bg-cyan-400 text-black px-6 py-3 rounded-xl font-bold hover:scale-105 transition">
+            Launch AI
         </button>
-
     </div>
-
 </nav>
-
 <!-- HERO -->
-
-<section class="min-h-screen flex flex-col justify-center items-center text-center px-6">
-
-    <div class="inline-block px-5 py-2 glass text-cyan-400 text-xs uppercase tracking-[0.3em] mb-8">
-        Founded 2025 • Mogadishu Somalia
+<section class="min-h-screen flex items-center justify-center text-center px-6">
+    <div class="max-w-5xl">
+        <div class="mb-6 inline-block glass px-5 py-2 rounded-full text-cyan-400 text-sm">
+            Somalia’s First AI Energy Intelligence Platform
+        </div>
+        <h1 class="text-6xl md:text-8xl font-black leading-tight mb-8">
+            The Future of <br>
+            <span class="gradient">
+                Somali AI Systems
+            </span>
+        </h1>
+        <p class="text-gray-400 text-xl max-w-3xl mx-auto mb-12">
+            EyeTech Pro combines artificial intelligence,
+            computer vision, and smart energy systems
+            to help homes and businesses optimize electricity,
+            analyze appliances, and reduce energy costs.
+        </p>
+        <div class="flex flex-wrap justify-center gap-5">
+            <button onclick="openDashboard()"
+            class="bg-cyan-400 text-black px-10 py-5 rounded-2xl font-black text-lg hover:scale-105 transition">
+                Launch Dashboard
+            </button>
+            <a href="#about"
+            class="glass px-10 py-5 rounded-2xl font-bold text-lg">
+                Learn More
+            </a>
+        </div>
     </div>
-
-    <h1 class="text-5xl md:text-8xl font-black leading-tight max-w-6xl mb-8">
-        AI ENERGY <br>
-        INTELLIGENCE
-    </h1>
-
-    <p class="text-gray-400 max-w-2xl text-lg mb-10">
-        EyeTech Pro uses OpenAI Vision and AI technology to analyze appliances,
-        estimate electricity costs, and help Somali families reduce power bills.
-    </p>
-
-    <div class="flex flex-col sm:flex-row gap-5">
-
-        <button
-        onclick="toggleDashboard()"
-        class="bg-cyan-400 text-black px-8 py-4 rounded-2xl font-black hover:bg-cyan-300 transition">
-            Open AI Dashboard
-        </button>
-
-        <a
-        href="#about"
-        class="glass px-8 py-4 rounded-2xl font-bold hover:bg-white/5 transition">
-            Learn More
-        </a>
-
-    </div>
-
 </section>
-
 <!-- ABOUT -->
-
-<section id="about" class="py-24 px-6">
-
+<section id="about" class="py-28 px-6">
     <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-
         <div>
-
-            <h2 class="text-4xl font-black mb-8">
-                Somalia's Future <span class="text-cyan-400">AI Company</span>
-            </h2>
-
-            <p class="text-gray-400 mb-6 text-lg">
-                EyeTech Pro was founded in 2025 in Mogadishu by Somali engineers
-                and AI developers educated both inside and outside Somalia.
-            </p>
-
-            <p class="text-gray-400 text-lg">
-                Our mission is to build premium artificial intelligence systems
-                for energy efficiency, computer vision, and smart infrastructure.
-            </p>
-
-        </div>
-
-        <div class="glass p-8 floating">
-
-            <img
-            src="https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&q=80&w=2000"
-            class="rounded-2xl">
-
-        </div>
-
-    </div>
-
-</section>
-
-<!-- CALCULATOR -->
-
-<section class="py-24 px-6 border-y border-white/10 bg-white/5">
-
-    <div class="max-w-4xl mx-auto">
-
-        <div class="glass p-10">
-
-            <h2 class="text-3xl font-black mb-10 text-center">
-                Energy Calculator
-            </h2>
-
-            <div class="grid md:grid-cols-2 gap-6 mb-8">
-
-                <input
-                id="calc-watts"
-                type="number"
-                placeholder="Watts"
-                class="bg-white/5 border border-white/10 rounded-2xl p-4 outline-none">
-
-                <input
-                id="calc-hours"
-                type="number"
-                placeholder="Hours per day"
-                class="bg-white/5 border border-white/10 rounded-2xl p-4 outline-none">
-
-            </div>
-
-            <div class="glass p-6 flex justify-between items-center">
-
-                <span class="text-gray-400">
-                    Estimated Monthly Cost
+            <h2 class="text-5xl font-black mb-8">
+                Built For Africa’s
+                <span class="gradient">
+                    AI Future
                 </span>
-
-                <span
-                id="out-monthly"
-                class="text-3xl font-black text-cyan-400">
-                    $0
-                </span>
-
-            </div>
-
+            </h2>
+            <p class="text-gray-400 text-lg leading-relaxed mb-6">
+                Founded in 2025 in Mogadishu,
+                EyeTech Pro is a Somali artificial intelligence company
+                created by internationally educated engineers and innovators.
+            </p>
+            <p class="text-gray-400 text-lg leading-relaxed">
+                Our mission is to build intelligent African technology systems
+                powered by OpenAI neural intelligence, computer vision,
+                and smart automation infrastructure.
+            </p>
         </div>
-
+        <div class="glass p-10 rounded-3xl">
+            <div class="grid grid-cols-2 gap-6">
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-4xl font-black text-cyan-400 mb-3">
+                        AI
+                    </h3>
+                    <p class="text-gray-400">
+                        Neural Intelligence
+                    </p>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-4xl font-black text-purple-400 mb-3">
+                        GPT
+                    </h3>
+                    <p class="text-gray-400">
+                        OpenAI Powered
+                    </p>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-4xl font-black text-green-400 mb-3">
+                        CV
+                    </h3>
+                    <p class="text-gray-400">
+                        Computer Vision
+                    </p>
+                </div>
+                <div class="glass p-6 rounded-2xl">
+                    <h3 class="text-4xl font-black text-orange-400 mb-3">
+                        24/7
+                    </h3>
+                    <p class="text-gray-400">
+                        AI Availability
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
-
 </section>
-
 <!-- DASHBOARD -->
-
-<div
-id="dashboard"
-class="fixed inset-0 bg-black z-[100] hidden p-4 md:p-8">
-
-    <div class="glass w-full h-full overflow-hidden flex flex-col">
-
-        <!-- HEADER -->
-
-        <div class="p-5 border-b border-white/10 flex justify-between items-center">
-
+<div id="dashboard"
+class="fixed inset-0 bg-[#050816] z-[100] hidden">
+    <div class="h-full flex flex-col">
+        <!-- TOP -->
+        <div class="glass p-5 flex justify-between items-center">
             <div>
-
-                <h2 class="font-black text-2xl">
+                <h2 class="text-3xl font-black">
                     EyeTech AI Dashboard
                 </h2>
-
-                <p class="text-xs uppercase tracking-[0.3em] text-gray-500">
-                    OpenAI Connected
+                <p class="text-gray-500">
+                    Real-Time AI Intelligence
                 </p>
-
             </div>
-
-            <button
-            onclick="toggleDashboard()"
-            class="w-10 h-10 rounded-full hover:bg-red-500/20">
-
-                <i class="fa-solid fa-xmark"></i>
-
+            <button onclick="closeDashboard()"
+            class="bg-red-500 px-5 py-3 rounded-xl font-bold">
+                Close
             </button>
-
         </div>
-
         <!-- CONTENT -->
-
-        <div class="flex-1 grid lg:grid-cols-2 gap-6 p-6 overflow-y-auto">
-
-            <!-- IMAGE ANALYSIS -->
-
-            <div class="glass p-8">
-
-                <h3 class="text-2xl font-black mb-6">
-                    AI Vision Analysis
-                </h3>
-
-                <input
-                type="file"
-                id="imageInput"
-                class="mb-6">
-
-                <div
-                id="analysis-result"
-                class="hidden">
-
-                    <div class="glass p-6">
-
-                        <h4
-                        id="res-name"
-                        class="text-2xl font-black text-cyan-400 mb-4">
-                        </h4>
-
-                        <p class="mb-2">
-                            Wattage:
-                            <span id="res-watt"></span>
-                        </p>
-
-                        <p class="mb-2">
-                            Monthly Cost:
-                            <span id="res-cost"></span>
-                        </p>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- CHAT -->
-
-            <div class="glass flex flex-col overflow-hidden">
-
-                <div class="p-5 border-b border-white/10">
-
-                    <h3 class="text-2xl font-black">
-                        AI Assistant
+        <div class="grid lg:grid-cols-2 gap-8 p-6 flex-1 overflow-hidden">
+            <!-- LEFT -->
+            <div class="space-y-8 overflow-y-auto">
+                <!-- IMAGE AI -->
+                <div class="glass p-8 rounded-3xl">
+                    <h3 class="text-3xl font-black mb-6">
+                        AI Vision Analysis
                     </h3>
-
+                    <input type="file"
+                    id="imageInput"
+                    accept="image/*"
+                    class="mb-6">
+                    <div id="imageResult"
+                    class="hidden mt-6">
+                        <div class="glass p-6 rounded-2xl">
+                            <h2 id="deviceName"
+                            class="text-3xl font-black text-cyan-400 mb-4">
+                            </h2>
+                            <p id="deviceWatt"
+                            class="mb-2 text-lg">
+                            </p>
+                            <p id="deviceCost"
+                            class="mb-2 text-lg">
+                            </p>
+                            <p id="deviceEfficiency"
+                            class="mb-4 text-lg">
+                            </p>
+                            <div class="glass p-4 rounded-xl">
+                                <p id="deviceTip"></p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-
-                <div
-                id="chat-box"
-                class="flex-1 overflow-y-auto p-5 space-y-4 scroll-hide">
-
-                    <div class="chat-ai p-4 max-w-[80%]">
+                <!-- CALCULATOR -->
+                <div class="glass p-8 rounded-3xl">
+                    <h3 class="text-3xl font-black mb-6">
+                        Energy Calculator
+                    </h3>
+                    <input
+                    type="number"
+                    id="watts"
+                    placeholder="Watts"
+                    class="w-full bg-black/20 p-4 rounded-xl mb-4">
+                    <input
+                    type="number"
+                    id="hours"
+                    placeholder="Hours Per Day"
+                    class="w-full bg-black/20 p-4 rounded-xl mb-6">
+                    <button onclick="calculate()"
+                    class="w-full bg-cyan-400 text-black py-4 rounded-xl font-black">
+                        Calculate
+                    </button>
+                    <div id="calcResult"
+                    class="hidden mt-6">
+                        <div class="glass p-5 rounded-xl">
+                            <h2 class="text-2xl font-black mb-4">
+                                Estimated Cost
+                            </h2>
+                            <p id="monthlyCost"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- RIGHT CHAT -->
+            <div class="glass rounded-3xl flex flex-col overflow-hidden">
+                <div class="p-5 border-b border-white/10">
+                    <h3 class="text-2xl font-black">
+                        EyeTech AI Assistant
+                    </h3>
+                </div>
+                <div id="chatBox"
+                class="flex-1 overflow-y-auto p-5 space-y-4 chat-scroll">
+                    <div class="glass p-4 rounded-2xl max-w-[80%]">
                         Salaam 👋 Waxaan ahay EyeTech AI Assistant.
                     </div>
-
                 </div>
-
-                <form
-                id="chat-form"
-                class="p-5 border-t border-white/10 flex gap-4">
-
+                <div class="p-5 border-t border-white/10 flex gap-4">
                     <input
                     type="text"
-                    id="chat-input"
+                    id="chatInput"
                     placeholder="Ask AI..."
-                    class="flex-1 bg-white/5 border border-white/10 rounded-2xl p-4 outline-none">
-
-                    <button
-                    class="bg-cyan-400 text-black px-6 rounded-2xl font-black">
-
+                    class="flex-1 bg-black/20 rounded-xl px-5">
+                    <button onclick="sendMessage()"
+                    class="bg-cyan-400 text-black px-6 rounded-xl font-black">
                         Send
-
                     </button>
-
-                </form>
-
+                </div>
             </div>
-
         </div>
-
     </div>
-
 </div>
-
 <script>
-
-/* =========================================
-BACKEND URL
-========================================= */
-
-const BACKEND_URL =
-"https://eye-tech-server.onrender.com";
-
-/* =========================================
-DASHBOARD
-========================================= */
-
-function toggleDashboard(){
-
-    const dash =
-    document.getElementById("dashboard");
-
-    dash.classList.toggle("hidden");
-
-    if(dash.classList.contains("hidden")){
-        document.body.style.overflow = "auto";
-    }else{
-        document.body.style.overflow = "hidden";
+function openDashboard(){
+    document.getElementById("dashboard")
+    .classList.remove("hidden");
+}
+function closeDashboard(){
+    document.getElementById("dashboard")
+    .classList.add("hidden");
+}
+async function sendMessage(){
+    const input =
+    document.getElementById("chatInput");
+    const message = input.value.trim();
+    if(!message) return;
+    appendMessage("user",message);
+    input.value = "";
+    try{
+        const response = await fetch(
+        "/api/assistant",
+        {
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                message:message
+            })
+        });
+        const data = await response.json();
+        appendMessage("ai",data.response);
+    }catch(err){
+        appendMessage("ai","Server Error");
     }
 }
-
-/* =========================================
-ENERGY CALCULATOR
-========================================= */
-
-const wattInput =
-document.getElementById("calc-watts");
-
-const hourInput =
-document.getElementById("calc-hours");
-
-const output =
-document.getElementById("out-monthly");
-
-async function calculateEnergy(){
-
-    const wattage =
-    wattInput.value;
-
-    const hours =
-    hourInput.value;
-
-    if(!wattage || !hours) return;
-
-    try{
-
-        const response =
-        await fetch(
-            `${BACKEND_URL}/api/calculate`,
+function appendMessage(role,text){
+    const box =
+    document.getElementById("chatBox");
+    const div =
+    document.createElement("div");
+    div.className =
+    role === "user"
+    ? "bg-cyan-400 text-black p-4 rounded-2xl ml-auto max-w-[80%]"
+    : "glass p-4 rounded-2xl max-w-[80%]";
+    div.innerText = text;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+document.getElementById("imageInput")
+.addEventListener("change",async function(){
+    const file = this.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async function(){
+        const base64 =
+        reader.result.split(",")[1];
+        try{
+            const response =
+            await fetch(
+            "/api/analyze-image",
             {
-
                 method:"POST",
-
                 headers:{
                     "Content-Type":"application/json"
                 },
-
                 body:JSON.stringify({
-                    wattage,
-                    hours
+                    image:base64
                 })
-            }
-        );
-
-        const data =
-        await response.json();
-
-        output.innerText =
-        `$${data.monthly}`;
-
-    }catch(err){
-
-        console.log(err);
-    }
-}
-
-wattInput.addEventListener(
-    "input",
-    calculateEnergy
-);
-
-hourInput.addEventListener(
-    "input",
-    calculateEnergy
-);
-
-/* =========================================
-CHATBOT
-========================================= */
-
-const chatForm =
-document.getElementById("chat-form");
-
-const chatInput =
-document.getElementById("chat-input");
-
-const chatBox =
-document.getElementById("chat-box");
-
-function addMessage(role,text){
-
-    const div =
-    document.createElement("div");
-
-    div.className =
-    role === "user"
-    ?
-    "chat-user p-4 max-w-[80%] ml-auto"
-    :
-    "chat-ai p-4 max-w-[80%]";
-
-    div.innerText = text;
-
-    chatBox.appendChild(div);
-
-    chatBox.scrollTop =
-    chatBox.scrollHeight;
-}
-
-chatForm.addEventListener(
-    "submit",
-
-    async (e)=>{
-
-        e.preventDefault();
-
-        const message =
-        chatInput.value.trim();
-
-        if(!message) return;
-
-        addMessage(
-            "user",
-            message
-        );
-
-        chatInput.value = "";
-
-        try{
-
-            const response =
-            await fetch(
-                `${BACKEND_URL}/api/assistant`,
-                {
-
-                    method:"POST",
-
-                    headers:{
-                        "Content-Type":
-                        "application/json"
-                    },
-
-                    body:JSON.stringify({
-                        message
-                    })
-                }
-            );
-
-            const data =
+            });
+            const raw =
             await response.json();
-
-            addMessage(
-                "ai",
-                data.response
-            );
-
-        }catch(err){
-
-            addMessage(
-                "ai",
-                "Server Error"
-            );
-        }
-    }
-);
-
-/* =========================================
-IMAGE ANALYSIS
-========================================= */
-
-const imageInput =
-document.getElementById("imageInput");
-
-imageInput.addEventListener(
-    "change",
-
-    async function(){
-
-        const file =
-        this.files[0];
-
-        if(!file) return;
-
-        const formData =
-        new FormData();
-
-        formData.append(
-            "image",
-            file
-        );
-
-        try{
-
-            const response =
-            await fetch(
-                `${BACKEND_URL}/api/analyze-image`,
-                {
-
-                    method:"POST",
-
-                    body:formData
-                }
-            );
-
             const data =
-            await response.json();
-
-            document
-            .getElementById("analysis-result")
+            typeof raw === "string"
+            ? JSON.parse(raw)
+            : raw;
+            document.getElementById("imageResult")
             .classList.remove("hidden");
-
-            document
-            .getElementById("res-name")
+            document.getElementById("deviceName")
+            .innerText = data.name;
+            document.getElementById("deviceWatt")
             .innerText =
-            data.appliance;
-
-            document
-            .getElementById("res-watt")
+            "Wattage: " + data.wattage;
+            document.getElementById("deviceCost")
             .innerText =
-            `${data.wattage}W`;
-
-            document
-            .getElementById("res-cost")
+            "Monthly Cost: $" + data.monthly_cost_usd;
+            document.getElementById("deviceEfficiency")
             .innerText =
-            `$${data.monthly_cost}`;
-
+            "Efficiency: " + data.efficiency_level;
+            document.getElementById("deviceTip")
+            .innerText =
+            data.somali_tip;
         }catch(err){
-
-            console.log(err);
+            alert("Image AI Failed");
         }
-    }
-);
-
+    };
+    reader.readAsDataURL(file);
+});
+function calculate(){
+    const watts =
+    document.getElementById("watts").value;
+    const hours =
+    document.getElementById("hours").value;
+    const monthly =
+    ((watts * hours)/1000) * 30 * 0.50;
+    document.getElementById("calcResult")
+    .classList.remove("hidden");
+    document.getElementById("monthlyCost")
+    .innerText =
+    "$" + monthly.toFixed(2) + " / month";
+}
 </script>
-
 </body>
 </html>
