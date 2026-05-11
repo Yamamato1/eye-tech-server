@@ -74,7 +74,7 @@ def waitlist():
 
             "from": "EyeTech Pro <onboarding@resend.dev>",
 
-            "to": COMPANY_EMAIL,
+            "to": "eyetech.engineering2026@gmail.com",
 
             "subject": "New EyeTech Pro Waitlist User",
 
