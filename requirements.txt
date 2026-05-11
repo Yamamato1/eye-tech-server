@@ -1,6 +1,7 @@
 flask
 flask-cors
 openai
-resend
 gunicorn
+resend
+requests
 python-dotenv
