@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify
-import os
 from werkzeug.utils import secure_filename
-import google.generativeai as genai
+from openai import OpenAI
+import os
+import base64
 
 app = Flask(__name__)
 
@@ -10,20 +11,19 @@ app = Flask(__name__)
 # =========================
 
 UPLOAD_FOLDER = "static/uploads"
+
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 # =========================
-# GEMINI API KEY
+# OPENAI API
 # =========================
 
-GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"
-
-genai.configure(api_key=GEMINI_API_KEY)
-
-model = genai.GenerativeModel("gemini-1.5-flash")
+client = OpenAI(
+    api_key="YOUR_OPENAI_API_KEY"
+)
 
 # =========================
 # HOME
@@ -33,7 +33,6 @@ model = genai.GenerativeModel("gemini-1.5-flash")
 def home():
     return render_template("index.html")
 
-
 # =========================
 # CHAT API
 # =========================
@@ -42,79 +41,122 @@ def home():
 def chat():
 
     data = request.json
+
     user_message = data.get("message")
 
-    prompt = f"""
-    Waxaad tahay EyeTech Core, sirdoonka rasmiga ah ee EyeTech Pro Somalia.
-    Hadalkaaga oo dhan waa Soomaali.
-    Marna ha sheegin magac kale oo AI ah.
-    U sharax dadka sida cilmiyeysan ee ay korontada u badbaadin karaan.
-    Noqo mid caqli badan, casri ah, oo Soomaali ah.
-
-    User:
-    {user_message}
-    """
-
     try:
-        response = model.generate_content(prompt)
+
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """
+                    Waxaad tahay EyeTech Core,
+                    sirdoonka rasmiga ah ee EyeTech Pro Somalia.
+
+                    Hadalkaaga oo dhan waa Soomaali.
+                    Marna ha sheegin AI kale.
+                    Dadka bar sida korontada loo badbaadiyo.
+                    """
+                },
+                {
+                    "role": "user",
+                    "content": user_message
+                }
+            ]
+        )
+
+        reply = response.choices[0].message.content
 
         return jsonify({
-            "response": response.text
+            "response": reply
         })
 
     except Exception as e:
+
         return jsonify({
-            "response": f"Error: {str(e)}"
+            "response": str(e)
         })
 
-
 # =========================
-# IMAGE ANALYSIS API
+# IMAGE ANALYSIS
 # =========================
 
 @app.route("/analyze-image", methods=["POST"])
 def analyze_image():
 
     if "image" not in request.files:
+
         return jsonify({
-            "response": "Sawir lama helin."
+            "response": "Sawir lama helin"
         })
 
     image = request.files["image"]
 
     filename = secure_filename(image.filename)
 
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+    filepath = os.path.join(
+        app.config["UPLOAD_FOLDER"],
+        filename
+    )
 
     image.save(filepath)
 
-    prompt = """
-    Waa maxay qalabkani?
-    Sidee korontadiisa loo badbaadin karaa?
-    Sharaxaad dheeraad ah sii qof Soomaali ah oo raba inuu biilka dhimo.
-    """
+    with open(filepath, "rb") as img_file:
+
+        base64_image = base64.b64encode(
+            img_file.read()
+        ).decode("utf-8")
 
     try:
 
-        uploaded_file = genai.upload_file(filepath)
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {
+                    "role": "system",
+                    "content": """
+                    Waxaad tahay EyeTech Core.
+                    Falanqee qalabka sawirka ku jira.
+                    Sharax sida koronto loo badbaadin karo.
+                    """
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": """
+                            Waa maxay qalabkani?
+                            Sidee korontadiisa loo yareyn karaa?
+                            """
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ]
+        )
 
-        response = model.generate_content([
-            prompt,
-            uploaded_file
-        ])
+        reply = response.choices[0].message.content
 
         return jsonify({
-            "response": response.text
+            "response": reply
         })
 
     except Exception as e:
+
         return jsonify({
-            "response": f"Error: {str(e)}"
+            "response": str(e)
         })
 
-
 # =========================
-# FEEDBACK API
+# FEEDBACK
 # =========================
 
 @app.route("/feedback", methods=["POST"])
@@ -122,22 +164,12 @@ def feedback():
 
     data = request.json
 
-    name = data.get("name")
-    email = data.get("email")
-    phone = data.get("phone")
-    message = data.get("message")
-
-    print("========= NEW FEEDBACK =========")
-    print("Name:", name)
-    print("Email:", email)
-    print("Phone:", phone)
-    print("Message:", message)
-    print("================================")
+    print("NEW FEEDBACK")
+    print(data)
 
     return jsonify({
         "success": True
     })
-
 
 # =========================
 # RUN
