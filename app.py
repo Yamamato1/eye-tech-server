@@ -66,71 +66,77 @@ def waitlist():
         whatsapp = data.get("whatsapp")
         feedback = data.get("feedback")
 
-        # ============================================
+        # =================================================
         # SEND EMAIL TO COMPANY
-        # ============================================
+        # =================================================
 
         resend.Emails.send({
 
             "from": "EyeTech Pro <onboarding@resend.dev>",
 
-            "to": "eyetech.engineering2026@gmail.com",
+            "to": COMPANY_EMAIL,
 
-            "subject": "New EyeTech Pro Waitlist User",
+            "subject": f"New Waitlist User - {name}",
 
             "html": f"""
 
-            <h2>New Waitlist Signup</h2>
+            <div style="font-family:Arial;padding:20px;">
 
-            <p><strong>Name:</strong> {name}</p>
+                <h2>New EyeTech Pro Signup</h2>
 
-            <p><strong>Email:</strong> {email}</p>
+                <p><strong>Name:</strong> {name}</p>
 
-            <p><strong>WhatsApp:</strong> {whatsapp}</p>
+                <p><strong>Email:</strong> {email}</p>
 
-            <p><strong>Feedback:</strong></p>
+                <p><strong>WhatsApp:</strong> {whatsapp}</p>
 
-            <p>{feedback}</p>
+                <p><strong>Feedback:</strong></p>
+
+                <p>{feedback}</p>
+
+            </div>
 
             """
 
         })
 
-        # ============================================
+        # =================================================
         # SEND CONFIRMATION EMAIL TO USER
-        # ============================================
-resend.Emails.send({
+        # =================================================
 
-    "from": "EyeTech Pro <onboarding@resend.dev>",
+        resend.Emails.send({
 
-    "to": "eyetech.engineering2026@gmail.com",
+            "from": "EyeTech Pro <onboarding@resend.dev>",
 
-    "subject": f"New Waitlist User - {name}",
+            "to": email,
 
-    "html": f"""
+            "subject": "Welcome to EyeTech Pro",
 
-    <div style="font-family:Arial;padding:20px;">
+            "html": f"""
 
-        <h2>New EyeTech Pro Signup</h2>
+            <div style="font-family:Arial;padding:20px;background:#0a0f1e;color:white;">
 
-        <p><strong>Name:</strong> {name}</p>
+                <h1 style="color:#22d3ee;">
+                    Mahadsanid {name}
+                </h1>
 
-        <p><strong>Email:</strong> {email}</p>
+                <p>
+                    Waad ku mahadsan tahay inaad ku biirtay EyeTech Pro.
+                </p>
 
-        <p><strong>WhatsApp:</strong> {whatsapp}</p>
+                <p>
+                    Waxaan dhiseynaa mustaqbalka AI-ga Soomaaliya.
+                </p>
 
-        <p><strong>Feedback:</strong></p>
+                <p>
+                    Waxaan kula soo xiriiri doonaa marka nidaamka la bilaabo.
+                </p>
 
-        <p>{feedback}</p>
+            </div>
 
-    </div>
+            """
 
-    """
-
-})
-      
-
-  
+        })
 
         return jsonify({
             "success": True,
