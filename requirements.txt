@@ -1,5 +1,5 @@
-flask
-flask-cors
+flaskapi
+unvicorn
 openai
 python-dotenv
-gunicorn
+pydantic
