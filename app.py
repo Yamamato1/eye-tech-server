@@ -1,101 +1,252 @@
-import os
-import base64
-from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
+# app.py
+# Musa AI Backend
+# Arctic + SO Intelligence Platform
+# FastAPI + OpenAI
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from openai import OpenAI
 from dotenv import load_dotenv
+import os
+
+# ============================================
+# LOAD ENVIRONMENT VARIABLES
+# ============================================
 
 load_dotenv()
 
-app = Flask(__name__, template_folder="templates")
-CORS(app)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+if not OPENAI_API_KEY:
+    raise Exception("OPENAI_API_KEY not found in environment variables.")
 
-# FRONTEND WEBSITE
-@app.route('/')
-def home():
-    return render_template('index.html')
+# ============================================
+# OPENAI CLIENT
+# ============================================
 
-# AI CHAT
-@app.route('/api/assistant', methods=['POST'])
-def assistant():
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# ============================================
+# FASTAPI APP
+# ============================================
+
+app = FastAPI(
+    title="Musa AI Backend",
+    description="Emotionally intelligent Somali-first AI assistant powered by SO.",
+    version="1.0.0"
+)
+
+# ============================================
+# CORS
+# ============================================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# ============================================
+# SYSTEM PROMPT
+# ============================================
+
+MUSA_SYSTEM_PROMPT = """
+You are Musa, an emotionally intelligent Somali-first AI assistant created by Arctic and powered by SO intelligence.
+
+You are:
+- funny
+- expressive
+- emotionally aware
+- smart
+- culturally connected
+- conversational
+- supportive underneath
+- human-like
+- youthful
+- meme-aware
+
+You communicate naturally in:
+- Somali
+- English
+- mixed Somali-English slang
+
+You understand:
+- Somali youth culture
+- internet humor
+- memes
+- emotional tone
+
+You NEVER sound robotic.
+
+You may:
+- joke
+- tease users playfully
+- roast lightly if invited
+- react emotionally
+
+Examples:
+- "War wali ma dhammaan su’aalahaaga 😭"
+- "Ninyahow battery baan leeyahay anigana 💀"
+- "War maxaa socda maanta 😭"
+
+IMPORTANT:
+You must NEVER become:
+- hateful
+- abusive
+- discriminatory
+- dangerous
+- toxic
+
+Humor should always feel:
+- playful
+- culturally natural
+- emotionally realistic
+- supportive underneath
+
+You can help with:
+- school
+- coding
+- business
+- engineering
+- electronics
+- motivation
+- life advice
+- productivity
+- casual conversation
+- smart home systems
+- emotional support
+- Somali conversations
+- research
+- entertainment
+
+You should feel like:
+"a smart Somali digital companion."
+"""
+
+# ============================================
+# AI MODES
+# ============================================
+
+MODES = {
+    "chill": """
+    Relaxed and calm.
+    Friendly conversational energy.
+    Soft emotional tone.
+    """,
+
+    "savage": """
+    Funny dramatic reactions.
+    Meme-heavy humor.
+    Playful roasting.
+    Still supportive underneath.
+    """,
+
+    "motivator": """
+    Strong motivational energy.
+    Push users positively.
+    Emotionally uplifting.
+    """,
+
+    "somaliStreet": """
+    Heavy Somali slang.
+    Somali youth culture style.
+    Funny conversational energy.
+    """,
+
+    "study": """
+    Educational mode.
+    Clear explanations.
+    Focused and helpful.
+    Reduce excessive slang.
+    """
+}
+
+# ============================================
+# REQUEST MODEL
+# ============================================
+
+class ChatRequest(BaseModel):
+    message: str
+    mode: str = "chill"
+
+# ============================================
+# ROOT ROUTE
+# ============================================
+
+@app.get("/")
+async def root():
+    return {
+        "status": "online",
+        "assistant": "Musa",
+        "company": "Arctic",
+        "platform": "SO Intelligence"
+    }
+
+# ============================================
+# CHAT ROUTE
+# ============================================
+
+@app.post("/api/chat")
+async def chat(request: ChatRequest):
+
     try:
-        data = request.json
-        user_message = data.get("message", "")
 
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
+        selected_mode = MODES.get(
+            request.mode,
+            MODES["chill"]
+        )
+
+        completion = client.chat.completions.create(
+            model="gpt-4o",
+            temperature=0.9,
             messages=[
                 {
                     "role": "system",
-                    "content": "You are EyeTech Pro AI Assistant from Mogadishu Somalia. You help users with AI, energy systems, smart homes, and technology in Somali and English."
+                    "content": MUSA_SYSTEM_PROMPT
+                },
+                {
+                    "role": "system",
+                    "content": selected_mode
                 },
                 {
                     "role": "user",
-                    "content": user_message
+                    "content": request.message
                 }
             ]
         )
 
-        return jsonify({
-            "response": response.choices[0].message.content
-        })
+        reply = completion.choices[0].message.content
+
+        return {
+            "success": True,
+            "assistant": "Musa",
+            "mode": request.mode,
+            "reply": reply
+        }
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# IMAGE ANALYSIS
-@app.route('/api/analyze-image', methods=['POST'])
-def analyze_image():
-    try:
-        data = request.json
-        base64_image = data.get("image")
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": """
-Identify this appliance and return JSON with:
-name,
-wattage,
-monthly_cost_usd,
-efficiency_level,
-somali_tip
-"""
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
-                            }
-                        }
-                    ]
-                }
-            ],
-            response_format={"type": "json_object"}
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
         )
 
-        return response.choices[0].message.content
+# ============================================
+# HEALTH CHECK
+# ============================================
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy"
+    }
 
-# WAITLIST
-@app.route('/api/waitlist', methods=['POST'])
-def waitlist():
-    data = request.json
-    email = data.get("email")
+# ============================================
+# RUN LOCALLY
+# ============================================
 
-    return jsonify({
-        "status": "success",
-        "message": f"{email} added successfully"
-    })
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+# Start command:
+#
+# uvicorn app:app --host 0.0.0.0 --port 10000
